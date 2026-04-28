@@ -1,0 +1,89 @@
+﻿@page "/catalog"
+@using OnlineShop.Web.Services
+@using OnlineShop.Shared.DTOs
+@inject ProductService ProductService
+@inject CategoryService CategoryService
+@inject NavigationManager Navigation
+
+<div class="container mt-4">
+    <h3>Каталог товаров</h3>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <input class="form-control" placeholder="Поиск..." @bind="searchQuery" @bind:event="oninput" @onkeyup="HandleSearch" />
+        </div>
+        <div class="col-md-3">
+            <select class="form-control" @bind="selectedCategory" @bind:after="LoadProducts">
+                <option value="0">Все категории</option>
+                @foreach (var cat in categories)
+                {
+                    <option value="@cat.Id">@cat.Name</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <p>Загрузка...</p>
+    }
+    else if (!products.Any())
+    {
+        <p>Товары не найдены</p>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var product in products)
+            {
+                <div class="col-md-3 mb-4">
+                    <div class="card h-100">
+                        @if (!string.IsNullOrEmpty(product.ImageUrl))
+                        {
+                            <img src="@product.ImageUrl" class="card-img-top" style="height:200px;object-fit:cover;" />
+                        }
+                        <div class="card-body">
+                            <h5 class="card-title">@product.Name</h5>
+                            <p class="card-text text-muted">@product.CategoryName</p>
+                            <p class="card-text fw-bold">@product.Price.ToString("C")</p>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-primary w-100" @onclick="() => Navigation.NavigateTo($\"/product/{product.Id}\")">
+                                Подробнее
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<ProductDto> products = new();
+    private List<CategoryDto> categories = new();
+    private string searchQuery = string.Empty;
+    private int selectedCategory = 0;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await CategoryService.GetAll();
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        isLoading = true;
+        products = await ProductService.GetAll(
+            selectedCategory == 0 ? null : selectedCategory,
+            string.IsNullOrEmpty(searchQuery) ? null : searchQuery
+        );
+        isLoading = false;
+    }
+
+    private async Task HandleSearch()
+    {
+        await LoadProducts();
+    }
+}

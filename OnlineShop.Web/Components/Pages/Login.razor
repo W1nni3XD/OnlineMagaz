@@ -1,6 +1,8 @@
 ﻿@page "/login"
-@inject OnlineShop.Web.Services.AuthService AuthService
-@inject OnlineShop.Web.Services.CustomAuthStateProvider AuthStateProvider
+@using Microsoft.AspNetCore.Components.Authorization
+@using OnlineShop.Web.Services
+@inject AuthService AuthService
+@inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 
 <div class="container mt-5">
@@ -51,7 +53,7 @@
         }
 
         await AuthService.SaveToken(result.Token);
-        await AuthStateProvider.NotifyAuthStateChanged();
+        await ((CustomAuthStateProvider)AuthStateProvider).NotifyAuthStateChanged();
         Navigation.NavigateTo("/");
     }
 }
