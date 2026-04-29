@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using OnlineShop.Web.Services;
+using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,7 @@ builder.Services.AddScoped<CategoryService>();
 
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 builder.Services.AddAuthorizationCore();
+builder.Services.AddMudServices();
 
 var app = builder.Build();
 
@@ -32,6 +34,7 @@ app.UseStaticFiles();
 app.UseAntiforgery();
 
 app.MapRazorComponents<OnlineShop.Web.Components.App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    .DisableAntiforgery();
 
 app.Run();

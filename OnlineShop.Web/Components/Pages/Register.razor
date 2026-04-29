@@ -1,44 +1,50 @@
 ﻿@page "/register"
 @using Microsoft.AspNetCore.Components.Authorization
 @using OnlineShop.Web.Services
+@using MudBlazor
 @inject AuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-4">
-            <h3>Регистрация</h3>
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Elevation="3" Class="pa-6">
+        <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-4">Регистрация</MudText>
 
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="alert alert-danger">@errorMessage</div>
-            }
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+        }
 
-            <div class="mb-3">
-                <label>Email</label>
-                <input class="form-control" @bind="email" type="email" />
-            </div>
-            <div class="mb-3">
-                <label>Пароль</label>
-                <input class="form-control" @bind="password" type="password" />
-            </div>
-            <div class="mb-3">
-                <label>Роль</label>
-                <select class="form-control" @bind="role">
-                    <option value="Buyer">Покупатель</option>
-                    <option value="Seller">Продавец</option>
-                </select>
-            </div>
-            <button class="btn btn-primary w-100" @onclick="HandleRegister">
-                Зарегистрироваться
-            </button>
-            <div class="mt-3 text-center">
-                <a href="/login">Уже есть аккаунт? Войти</a>
-            </div>
-        </div>
-    </div>
-</div>
+        <MudTextField @bind-Value="email"
+                      Label="Email"
+                      Variant="Variant.Outlined"
+                      InputType="InputType.Email"
+                      Class="mb-3" />
+
+        <MudTextField @bind-Value="password"
+                      Label="Пароль"
+                      Variant="Variant.Outlined"
+                      InputType="InputType.Password"
+                      Class="mb-3" />
+
+        <MudText Class="mb-2">Роль</MudText>
+        <MudRadioGroup @bind-Value="role" Class="mb-4">
+            <MudRadio Value="@("Buyer")" Color="Color.Primary">Покупатель</MudRadio>
+            <MudRadio Value="@("Seller")" Color="Color.Primary">Продавец</MudRadio>
+        </MudRadioGroup>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   FullWidth="true"
+                   OnClick="HandleRegister">
+            Зарегистрироваться
+        </MudButton>
+
+        <MudText Align="Align.Center" Class="mt-3">
+            Уже есть аккаунт? <MudLink Href="/login">Войти</MudLink>
+        </MudText>
+    </MudPaper>
+</MudContainer>
 
 @code {
     private string email = string.Empty;

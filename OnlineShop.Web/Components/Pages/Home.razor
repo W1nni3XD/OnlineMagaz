@@ -1,7 +1,83 @@
 ﻿@page "/"
+@using MudBlazor
+@using OnlineShop.Web.Services
+@using OnlineShop.Shared.DTOs
+@inject CategoryService CategoryService
+@inject NavigationManager Navigation
 
-<PageTitle>Home</PageTitle>
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    
+    <!-- Баннер -->
+    <MudPaper Elevation="0" Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 60px 40px; margin-bottom: 32px;">
+        <MudText Typo="Typo.h3" Style="color: white; font-weight: 700;">Добро пожаловать в OnlineShop</MudText>
+        <MudText Typo="Typo.h6" Style="color: rgba(255,255,255,0.85); margin-top: 8px;">Это топовый онлайн магаз :D</MudText>
+        <MudButton Variant="Variant.Filled"
+                   Style="background: white; color: #667eea; margin-top: 24px; font-weight: 600; padding: 10px 32px; border-radius: 8px;"
+                   OnClick='() => Navigation.NavigateTo("/catalog")'>
+            Перейти в каталог
+        </MudButton>
+    </MudPaper>
 
-<h1>Hello, world!</h1>
+    <!-- Категории -->
+    <MudText Typo="Typo.h5" Class="mb-4" Style="font-weight: 600;">Категории</MudText>
 
-Welcome to your new app.
+    @if (isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (!categories.Any())
+    {
+        <MudAlert Severity="Severity.Info">Категории пока не добавлены</MudAlert>
+    }
+    else
+    {
+        <MudGrid>
+            @foreach (var category in categories)
+            {
+                <MudItem xs="6" sm="4" md="3">
+                    <MudPaper Elevation="2"
+                              Class="pa-4 d-flex flex-column align-center justify-center"
+                              Style="cursor: pointer; border-radius: 12px; min-height: 120px; transition: transform 0.2s;"
+                              @onclick='() => Navigation.NavigateTo($"/catalog?categoryId={category.Id}")'>
+                        <MudIcon Icon="@Icons.Material.Filled.Category"
+                                 Color="Color.Primary"
+                                 Style="font-size: 2.5rem;" />
+                        <MudText Typo="Typo.subtitle1"
+                                 Align="Align.Center"
+                                 Class="mt-2"
+                                 Style="font-weight: 500;">
+                            @category.Name
+                        </MudText>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+    <!-- Призыв к действию -->
+    <MudPaper Elevation="0"
+              Style="background: #f5f5f5; border-radius: 16px; padding: 40px; margin-top: 40px; text-align: center;">
+        <MudText Typo="Typo.h5" Style="font-weight: 600;">Вы продавец?</MudText>
+        <MudText Typo="Typo.body1" Class="mt-2" Style="color: #666;">
+            Зарегистрируйтесь как продавец и начните продавать свои товары
+        </MudText>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Class="mt-3"
+                   OnClick='() => Navigation.NavigateTo("/register")'>
+            Стать продавцом
+        </MudButton>
+    </MudPaper>
+
+</MudContainer>
+
+@code {
+    private List<CategoryDto> categories = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await CategoryService.GetAll();
+        isLoading = false;
+    }
+}
