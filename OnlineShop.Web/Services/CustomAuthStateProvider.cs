@@ -15,16 +15,23 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        var token = await _authService.GetToken();
+        try
+        {
+            var token = await _authService.GetToken();
 
-        if (string.IsNullOrEmpty(token))
+            if (string.IsNullOrEmpty(token))
+                return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+
+            var claims = ParseClaimsFromJwt(token);
+            var identity = new ClaimsIdentity(claims, "jwt");
+            var user = new ClaimsPrincipal(identity);
+
+            return new AuthenticationState(user);
+        }
+        catch
+        {
             return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
-
-        var claims = ParseClaimsFromJwt(token);
-        var identity = new ClaimsIdentity(claims, "jwt");
-        var user = new ClaimsPrincipal(identity);
-
-        return new AuthenticationState(user);
+        }
     }
 
     public async Task NotifyAuthStateChanged()
