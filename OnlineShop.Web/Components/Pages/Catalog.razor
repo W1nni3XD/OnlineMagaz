@@ -1,77 +1,124 @@
 ﻿@page "/catalog"
+@using MudBlazor
 @using OnlineShop.Web.Services
 @using OnlineShop.Shared.DTOs
 @inject ProductService ProductService
 @inject CategoryService CategoryService
+@inject CartService CartService
 @inject NavigationManager Navigation
+@implements IDisposable
 
-<div class="container mt-4">
-    <h3>Каталог товаров</h3>
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
 
-    <div class="row mb-3">
-        <div class="col-md-4">
-            <input class="form-control" placeholder="Поиск..." @bind="searchQuery" @bind:event="oninput" @onkeyup="HandleSearch" />
-        </div>
-        <div class="col-md-3">
-            <select class="form-control" @bind="selectedCategory" @bind:after="LoadProducts">
-                <option value="0">Все категории</option>
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="4">
+            <MudTextField @bind-Value="searchQuery"
+                          Label="Поиск товаров"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          @onkeyup="HandleSearch" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect @bind-Value="selectedCategory"
+                       Label="Категория"
+                       Variant="Variant.Outlined"
+                       @bind-Value:after="LoadProducts">
+                <MudSelectItem Value="0">Все категории</MudSelectItem>
                 @foreach (var cat in categories)
                 {
-                    <option value="@cat.Id">@cat.Name</option>
+                    <MudSelectItem Value="@cat.Id">@cat.Name</MudSelectItem>
                 }
-            </select>
-        </div>
-    </div>
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
 
     @if (isLoading)
     {
-        <p>Загрузка...</p>
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
     }
     else if (!products.Any())
     {
-        <p>Товары не найдены</p>
+        <MudAlert Severity="Severity.Info">Товары не найдены</MudAlert>
     }
     else
     {
-        <div class="row">
+        <MudGrid>
             @foreach (var product in products)
             {
-                <div class="col-md-3 mb-4">
-                    <div class="card h-100">
+                <MudItem xs="12" sm="6" md="3">
+                    <MudCard Elevation="2" Style="border-radius: 12px; height: 100%;">
                         @if (!string.IsNullOrEmpty(product.ImageUrl))
                         {
-                            <img src="@product.ImageUrl" class="card-img-top" style="height:200px;object-fit:cover;" />
+                            <MudCardMedia Image="@product.ImageUrl" Height="200" />
                         }
-                        <div class="card-body">
-                            <h5 class="card-title">@product.Name</h5>
-                            <p class="card-text text-muted">@product.CategoryName</p>
-                            <p class="card-text fw-bold">@product.Price.ToString("C")</p>
-                        </div>
-                        <div class="card-footer">
-                            Подробнее
-                        </div>
-                    </div>
-                </div>
+                        else
+                        {
+                            <div style="height: 200px; background: #f5f5f5; display: flex; align-items: center; justify-content: center;">
+                                <MudIcon Icon="@Icons.Material.Filled.Image" Style="font-size: 4rem; color: #ccc;" />
+                            </div>
+                        }
+                        <MudCardContent>
+                            <MudText Typo="Typo.h6" Style="font-weight: 600;">@product.Name</MudText>
+                            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="mt-1">@product.CategoryName</MudChip>
+                            <MudText Typo="Typo.h6" Color="Color.Primary" Class="mt-2">
+                                @product.Price.ToString("C")
+                            </MudText>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       OnClick='() => Navigation.NavigateTo($"/product/{product.Id}")'>
+                                Подробнее
+                            </MudButton>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.ShoppingCart"
+                                       OnClick="() => AddToCart(product.Id)">
+                                В корзину
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
             }
-        </div>
+        </MudGrid>
     }
-</div>
+</MudContainer>
 
 @code {
+    [SupplyParameterFromQuery]
+    public int? CategoryId { get; set; }
+
     private List<ProductDto> products = new();
     private List<CategoryDto> categories = new();
     private string searchQuery = string.Empty;
     private int selectedCategory = 0;
     private bool isLoading = true;
+    private bool initialized = false;
+    private bool disposed = false;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        categories = await CategoryService.GetAll();
-        await LoadProducts();
+        if (firstRender && !initialized)
+        {
+            initialized = true;
+            try
+            {
+                categories = await CategoryService.GetAll();
+                if (CategoryId.HasValue)
+                    selectedCategory = CategoryId.Value;
+                await LoadProducts();
+            }
+            catch { }
+            
+            if (!disposed)
+                await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task LoadProducts()
     {
+        if (disposed) return;
         isLoading = true;
         products = await ProductService.GetAll(
             selectedCategory == 0 ? null : selectedCategory,
@@ -82,6 +129,26 @@
 
     private async Task HandleSearch()
     {
+        if (disposed) return;
         await LoadProducts();
+        if (!disposed)
+            await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task AddToCart(int productId)
+    {
+        if (disposed) return;
+        await CartService.AddToCart(new OnlineShop.Shared.DTOs.AddToCartDto
+        {
+            ProductId = productId,
+            Quantity = 1
+        });
+        if (!disposed)
+            await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
     }
 }

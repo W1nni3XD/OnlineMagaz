@@ -5,22 +5,12 @@
 @inject CategoryService CategoryService
 @inject NavigationManager Navigation
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<div class="container mt-5 text-center">
-    <h1>Добро пожаловать в OnlineShop</h1>
-    <p class="lead mt-3">Лучшие товары по лучшим ценам</p>
-    <a href="/catalog" class="btn btn-primary btn-lg mt-3">Перейти в каталог</a>
-</div>
-=======
->>>>>>> a439cbf
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     
     <!-- Баннер -->
     <MudPaper Elevation="0" Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 60px 40px; margin-bottom: 32px;">
         <MudText Typo="Typo.h3" Style="color: white; font-weight: 700;">Добро пожаловать в OnlineShop</MudText>
-        <MudText Typo="Typo.h6" Style="color: rgba(255,255,255,0.85); margin-top: 8px;">Это топовый онлайн магаз :D</MudText>
+        <MudText Typo="Typo.h6" Style="color: rgba(255,255,255,0.85); margin-top: 8px;">Лучшие товары по лучшим ценам</MudText>
         <MudButton Variant="Variant.Filled"
                    Style="background: white; color: #667eea; margin-top: 24px; font-weight: 600; padding: 10px 32px; border-radius: 8px;"
                    OnClick='() => Navigation.NavigateTo("/catalog")'>
@@ -90,9 +80,4 @@
         categories = await CategoryService.GetAll();
         isLoading = false;
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 50bc893 (Поработал с mudBlazor , сделал более менее Главную страницу, вход и регистрацию)
->>>>>>> a439cbf

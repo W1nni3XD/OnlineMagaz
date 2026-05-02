@@ -5,54 +5,56 @@ namespace OnlineShop.Web.Services;
 
 public class CartService
 {
-    private readonly HttpClient _http;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly AuthService _authService;
 
-    public CartService(HttpClient http, AuthService authService)
+    public CartService(IHttpClientFactory httpClientFactory, AuthService authService)
     {
-        _http = http;
+        _httpClientFactory = httpClientFactory;
         _authService = authService;
     }
 
-    private async Task SetAuthHeader()
+    private async Task<HttpClient> GetClient()
     {
+        var client = _httpClientFactory.CreateClient("API");
         var token = await _authService.GetToken();
-        _http.DefaultRequestHeaders.Authorization =
+        client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        return client;
     }
 
     public async Task<List<CartItemDto>> GetCart()
     {
-        await SetAuthHeader();
-        var result = await _http.GetFromJsonAsync<List<CartItemDto>>("api/cart");
+        var client = await GetClient();
+        var result = await client.GetFromJsonAsync<List<CartItemDto>>("api/cart");
         return result ?? new List<CartItemDto>();
     }
 
     public async Task<bool> AddToCart(AddToCartDto dto)
     {
-        await SetAuthHeader();
-        var response = await _http.PostAsJsonAsync("api/cart", dto);
+        var client = await GetClient();
+        var response = await client.PostAsJsonAsync("api/cart", dto);
         return response.IsSuccessStatusCode;
     }
 
     public async Task<bool> UpdateQuantity(int id, UpdateCartItemDto dto)
     {
-        await SetAuthHeader();
-        var response = await _http.PutAsJsonAsync($"api/cart/{id}", dto);
+        var client = await GetClient();
+        var response = await client.PutAsJsonAsync($"api/cart/{id}", dto);
         return response.IsSuccessStatusCode;
     }
 
     public async Task<bool> RemoveItem(int id)
     {
-        await SetAuthHeader();
-        var response = await _http.DeleteAsync($"api/cart/{id}");
+        var client = await GetClient();
+        var response = await client.DeleteAsync($"api/cart/{id}");
         return response.IsSuccessStatusCode;
     }
 
     public async Task<bool> ClearCart()
     {
-        await SetAuthHeader();
-        var response = await _http.DeleteAsync("api/cart");
+        var client = await GetClient();
+        var response = await client.DeleteAsync("api/cart");
         return response.IsSuccessStatusCode;
     }
 }

@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Cors.Infrastructure;
 using OnlineShop.Web.Services;
 using MudBlazor.Services;
 
@@ -8,9 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddScoped(sp => new HttpClient
+builder.Services.AddHttpClient("API", client =>
 {
-    BaseAddress = new Uri("http://localhost:5170/")
+    client.BaseAddress = new Uri("http://localhost:5170/");
 });
 
 builder.Services.AddScoped<AuthService>();

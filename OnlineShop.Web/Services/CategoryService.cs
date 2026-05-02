@@ -5,46 +5,52 @@ namespace OnlineShop.Web.Services;
 
 public class CategoryService
 {
-    private readonly HttpClient _http;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly AuthService _authService;
 
-    public CategoryService(HttpClient http, AuthService authService)
+    public CategoryService(IHttpClientFactory httpClientFactory, AuthService authService)
     {
-        _http = http;
+        _httpClientFactory = httpClientFactory;
         _authService = authService;
     }
 
-    private async Task SetAuthHeader()
+    private async Task<HttpClient> GetClient(bool withAuth = false)
     {
-        var token = await _authService.GetToken();
-        _http.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        var client = _httpClientFactory.CreateClient("API");
+        if (withAuth)
+        {
+            var token = await _authService.GetToken();
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+        return client;
     }
 
     public async Task<List<CategoryDto>> GetAll()
     {
-        var result = await _http.GetFromJsonAsync<List<CategoryDto>>("api/categories");
+        var client = await GetClient();
+        var result = await client.GetFromJsonAsync<List<CategoryDto>>("api/categories");
         return result ?? new List<CategoryDto>();
     }
 
     public async Task<bool> Create(CategoryDto dto)
     {
-        await SetAuthHeader();
-        var response = await _http.PostAsJsonAsync("api/categories", dto);
+        var client = await GetClient(true);
+        var response = await client.PostAsJsonAsync("api/categories", dto);
         return response.IsSuccessStatusCode;
     }
 
     public async Task<bool> Update(int id, CategoryDto dto)
     {
-        await SetAuthHeader();
-        var response = await _http.PutAsJsonAsync($"api/categories/{id}", dto);
+        var client = await GetClient(true);
+        var response = await client.PutAsJsonAsync($"api/categories/{id}", dto);
         return response.IsSuccessStatusCode;
     }
 
     public async Task<bool> Delete(int id)
     {
-        await SetAuthHeader();
-        var response = await _http.DeleteAsync($"api/categories/{id}");
+        var client = await GetClient(true);
+        var response = await client.DeleteAsync($"api/categories/{id}");
         return response.IsSuccessStatusCode;
     }
 }

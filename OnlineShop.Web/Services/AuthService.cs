@@ -1,5 +1,4 @@
 ﻿using System.Net.Http.Json;
-using System.Text.Json;
 using Microsoft.JSInterop;
 using OnlineShop.Shared.DTOs;
 
@@ -7,25 +6,27 @@ namespace OnlineShop.Web.Services;
 
 public class AuthService
 {
-    private readonly HttpClient _http;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IJSRuntime _js;
 
-    public AuthService(HttpClient http, IJSRuntime js)
+    public AuthService(IHttpClientFactory httpClientFactory, IJSRuntime js)
     {
-        _http = http;
+        _httpClientFactory = httpClientFactory;
         _js = js;
     }
 
     public async Task<AuthResponseDto?> Register(RegisterDto dto)
     {
-        var response = await _http.PostAsJsonAsync("api/auth/register", dto);
+        var client = _httpClientFactory.CreateClient("API");
+        var response = await client.PostAsJsonAsync("api/auth/register", dto);
         if (!response.IsSuccessStatusCode) return null;
         return await response.Content.ReadFromJsonAsync<AuthResponseDto>();
     }
 
     public async Task<AuthResponseDto?> Login(LoginDto dto)
     {
-        var response = await _http.PostAsJsonAsync("api/auth/login", dto);
+        var client = _httpClientFactory.CreateClient("API");
+        var response = await client.PostAsJsonAsync("api/auth/login", dto);
         if (!response.IsSuccessStatusCode) return null;
         return await response.Content.ReadFromJsonAsync<AuthResponseDto>();
     }

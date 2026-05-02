@@ -5,47 +5,49 @@ namespace OnlineShop.Web.Services;
 
 public class OrderService
 {
-    private readonly HttpClient _http;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly AuthService _authService;
 
-    public OrderService(HttpClient http, AuthService authService)
+    public OrderService(IHttpClientFactory httpClientFactory, AuthService authService)
     {
-        _http = http;
+        _httpClientFactory = httpClientFactory;
         _authService = authService;
     }
 
-    private async Task SetAuthHeader()
+    private async Task<HttpClient> GetClient()
     {
+        var client = _httpClientFactory.CreateClient("API");
         var token = await _authService.GetToken();
-        _http.DefaultRequestHeaders.Authorization =
+        client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        return client;
     }
 
     public async Task<bool> CreateOrder()
     {
-        await SetAuthHeader();
-        var response = await _http.PostAsync("api/orders", null);
+        var client = await GetClient();
+        var response = await client.PostAsync("api/orders", null);
         return response.IsSuccessStatusCode;
     }
 
     public async Task<List<OrderDto>> GetMyOrders()
     {
-        await SetAuthHeader();
-        var result = await _http.GetFromJsonAsync<List<OrderDto>>("api/orders/my");
+        var client = await GetClient();
+        var result = await client.GetFromJsonAsync<List<OrderDto>>("api/orders/my");
         return result ?? new List<OrderDto>();
     }
 
     public async Task<List<OrderDto>> GetAllOrders()
     {
-        await SetAuthHeader();
-        var result = await _http.GetFromJsonAsync<List<OrderDto>>("api/orders");
+        var client = await GetClient();
+        var result = await client.GetFromJsonAsync<List<OrderDto>>("api/orders");
         return result ?? new List<OrderDto>();
     }
 
     public async Task<bool> UpdateStatus(int id, UpdateOrderStatusDto dto)
     {
-        await SetAuthHeader();
-        var response = await _http.PatchAsJsonAsync($"api/orders/{id}/status", dto);
+        var client = await GetClient();
+        var response = await client.PatchAsJsonAsync($"api/orders/{id}/status", dto);
         return response.IsSuccessStatusCode;
     }
 }
