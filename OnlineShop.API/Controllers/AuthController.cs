@@ -1,11 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using OnlineShop.API.Data;
 using OnlineShop.API.Models.Entities;
+using OnlineShop.API.Services;
 using OnlineShop.Shared.DTOs;
 
 namespace OnlineShop.API.Controllers;
@@ -15,12 +12,12 @@ namespace OnlineShop.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AppDbContext _context;
-    private readonly IConfiguration _configuration;
+    private readonly TokenService _tokenService;
 
-    public AuthController(AppDbContext context, IConfiguration configuration)
+    public AuthController(AppDbContext context, TokenService tokenService)
     {
         _context = context;
-        _configuration = configuration;
+        _tokenService = tokenService;
     }
 
     [HttpPost("register")]
@@ -39,7 +36,7 @@ public class AuthController : ControllerBase
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        var token = GenerateToken(user);
+        var token = _tokenService.GenerateToken(user);
 
         return Ok(new AuthResponseDto
         {
@@ -57,7 +54,7 @@ public class AuthController : ControllerBase
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             return Unauthorized("Неверный email или пароль");
 
-        var token = GenerateToken(user);
+        var token = _tokenService.GenerateToken(user);
 
         return Ok(new AuthResponseDto
         {
@@ -65,29 +62,5 @@ public class AuthController : ControllerBase
             Email = user.Email,
             Role = user.Role
         });
-    }
-
-    private string GenerateToken(User user)
-    {
-        var jwtSettings = _configuration.GetSection("JwtSettings");
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Role, user.Role)
-        };
-
-        var token = new JwtSecurityToken(
-            issuer: jwtSettings["Issuer"],
-            audience: jwtSettings["Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddDays(int.Parse(jwtSettings["ExpiryDays"]!)),
-            signingCredentials: credentials
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
