@@ -1,0 +1,369 @@
+@page "/seller"
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Seller,Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@using OnlineShop.Shared.DTOs
+@using OnlineShop.Web.Services
+@inject ProductService ProductService
+@inject CategoryService CategoryService
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<MudText Typo="Typo.h5" Class="mb-4">Мои товары</MudText>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudText Typo="Typo.subtitle1" Class="mb-3">Новая категория</MudText>
+    <MudText Typo="Typo.body2" Class="mb-3" Style="color: var(--mud-palette-text-secondary);">
+        Категорию видят все в каталоге; к своей категории можете привязать только вы (и общие категории админа, если есть).
+    </MudText>
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudTextField @bind-Value="newCategoryName"
+                          Label="Название категории"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="newCategoryDescription"
+                          Label="Описание"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" md="2" Class="d-flex align-end">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Secondary"
+                       FullWidth="true"
+                       OnClick="CreateCategoryAsync"
+                       Disabled="busy">
+                Создать
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    @if (myCategories.Any())
+    {
+        <MudText Typo="Typo.caption" Class="mt-3 mb-1">Ваши категории</MudText>
+        <MudList T="string" Dense="true">
+            @foreach (var c in myCategories)
+            {
+                <MudListItem>
+                    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                        <span>@c.Name</span>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       aria-label="Удалить категорию"
+                                       OnClick="() => DeleteCategoryAsync(c.Id)"
+                                       Disabled="busy" />
+                    </div>
+                </MudListItem>
+            }
+        </MudList>
+    }
+</MudPaper>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudText Typo="Typo.subtitle1" Class="mb-3">
+        @(editingId == null ? "Новый товар" : "Редактирование товара")
+    </MudText>
+
+    @if (!categories.Any())
+    {
+        <MudAlert Severity="Severity.Info">
+            Сначала создайте категорию — без неё товар не добавить.
+        </MudAlert>
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="form.Name"
+                              Label="Название"
+                              Variant="Variant.Outlined"
+                              Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="int"
+                           @bind-Value="form.CategoryId"
+                           Label="Категория"
+                           Variant="Variant.Outlined"
+                           AnchorOrigin="Origin.BottomCenter">
+                    @foreach (var c in categories)
+                    {
+                        <MudSelectItem Value="@c.Id">@c.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="form.Description"
+                              Label="Описание"
+                              Variant="Variant.Outlined"
+                              Lines="3" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="form.Price"
+                                 Label="Цена"
+                                 Variant="Variant.Outlined"
+                                 Min="0m"
+                                 Format="N2"
+                                 Culture="@System.Globalization.CultureInfo.GetCultureInfo("ru-RU")" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="form.Stock"
+                                 Label="Остаток на складе"
+                                 Variant="Variant.Outlined"
+                                 Min="0"
+                                 Step="1" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="imageUrlBind"
+                              Label="Ссылка на изображение (необязательно)"
+                              Variant="Variant.Outlined"
+                              HelperText="URL картинки товара" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="SaveAsync"
+                           Disabled="busy">
+                    @(editingId == null ? "Добавить товар" : "Сохранить")
+                </MudButton>
+                @if (editingId != null)
+                {
+                    <MudButton Variant="Variant.Text"
+                               Class="ml-2"
+                               OnClick="CancelEdit"
+                               Disabled="busy">
+                        Отмена
+                    </MudButton>
+                }
+            </MudItem>
+        </MudGrid>
+    }
+</MudPaper>
+
+@if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (!myProducts.Any())
+{
+    <MudAlert Severity="Severity.Info">У вас пока нет товаров — добавьте первый через форму выше.</MudAlert>
+}
+else
+{
+    <MudTable Items="@myProducts" Hover="true" Breakpoint="Breakpoint.Md">
+        <HeaderContent>
+            <MudTh>Название</MudTh>
+            <MudTh>Категория</MudTh>
+            <MudTh Class="text-end">Цена</MudTh>
+            <MudTh Class="text-end">Остаток</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Название">@context.Name</MudTd>
+            <MudTd DataLabel="Категория">@context.CategoryName</MudTd>
+            <MudTd DataLabel="Цена" Class="text-end">@context.Price.ToString("C")</MudTd>
+            <MudTd DataLabel="Остаток" Class="text-end">@context.Stock</MudTd>
+            <MudTd>
+                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="() => StartEdit(context)">
+                    Изменить
+                </MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="() => DeleteProductAsync(context.Id)">
+                    Удалить
+                </MudButton>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private readonly List<ProductDto> myProducts = new();
+    private List<CategoryDto> categories = new();
+    private IEnumerable<CategoryDto> myCategories => categories.Where(c => c.SellerId.HasValue).OrderBy(c => c.Name);
+    private CreateProductDto form = new();
+    private string imageUrlBind = string.Empty;
+    private int? editingId;
+    private bool isLoading = true;
+    private bool busy;
+    private bool disposed;
+    private string newCategoryName = string.Empty;
+    private string newCategoryDescription = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadCategoriesAndProductsAsync();
+    }
+
+    private async Task ReloadCategoriesAndProductsAsync()
+    {
+        isLoading = true;
+        try
+        {
+            categories = await CategoryService.GetAvailableForSeller();
+            if (categories.Any() && (form.CategoryId == 0 || !categories.Any(c => c.Id == form.CategoryId)))
+                form.CategoryId = categories[0].Id;
+
+            myProducts.Clear();
+            myProducts.AddRange(await ProductService.GetMine());
+        }
+        catch
+        {
+            Snackbar.Add("Не удалось загрузить данные. Проверьте вход и API.", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CreateCategoryAsync()
+    {
+        if (disposed) return;
+        if (string.IsNullOrWhiteSpace(newCategoryName))
+        {
+            Snackbar.Add("Введите название категории", Severity.Warning);
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            var nameSaved = newCategoryName.Trim();
+            var ok = await CategoryService.Create(new CategoryDto
+            {
+                Name = nameSaved,
+                Description = newCategoryDescription?.Trim() ?? string.Empty
+            });
+            if (ok)
+            {
+                Snackbar.Add("Категория создана", Severity.Success);
+                newCategoryName = string.Empty;
+                newCategoryDescription = string.Empty;
+                await ReloadCategoriesAndProductsAsync();
+                var created = categories.FirstOrDefault(c => c.Name == nameSaved);
+                if (created != null)
+                    form.CategoryId = created.Id;
+            }
+            else
+                Snackbar.Add("Не удалось создать категорию", Severity.Error);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private async Task DeleteCategoryAsync(int id)
+    {
+        if (disposed) return;
+        busy = true;
+        try
+        {
+            var ok = await CategoryService.Delete(id);
+            if (ok)
+            {
+                Snackbar.Add("Категория удалена", Severity.Info);
+                await ReloadCategoriesAndProductsAsync();
+            }
+            else
+                Snackbar.Add("Нельзя удалить (есть товары или нет прав)", Severity.Error);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void StartEdit(ProductDto p)
+    {
+        editingId = p.Id;
+        form = new CreateProductDto
+        {
+            Name = p.Name,
+            Description = p.Description,
+            Price = p.Price,
+            Stock = p.Stock,
+            CategoryId = p.CategoryId,
+            ImageUrl = string.IsNullOrEmpty(p.ImageUrl) ? null : p.ImageUrl
+        };
+        imageUrlBind = p.ImageUrl ?? string.Empty;
+        StateHasChanged();
+    }
+
+    private void CancelEdit()
+    {
+        editingId = null;
+        form = new CreateProductDto();
+        imageUrlBind = string.Empty;
+        if (categories.Any())
+            form.CategoryId = categories[0].Id;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (disposed) return;
+        if (string.IsNullOrWhiteSpace(form.Name))
+        {
+            Snackbar.Add("Введите название товара", Severity.Warning);
+            return;
+        }
+        if (!categories.Any() || form.CategoryId == 0)
+        {
+            Snackbar.Add("Выберите категорию", Severity.Warning);
+            return;
+        }
+
+        form.ImageUrl = string.IsNullOrWhiteSpace(imageUrlBind) ? null : imageUrlBind.Trim();
+
+        busy = true;
+        try
+        {
+            bool ok;
+            if (editingId == null)
+                ok = await ProductService.Create(form);
+            else
+                ok = await ProductService.Update(editingId.Value, form);
+
+            if (ok)
+            {
+                Snackbar.Add(editingId == null ? "Товар добавлен" : "Изменения сохранены", Severity.Success);
+                CancelEdit();
+                await ReloadCategoriesAndProductsAsync();
+            }
+            else
+                Snackbar.Add("Ошибка сохранения. Попробуйте снова (нужен вход как продавец).", Severity.Error);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private async Task DeleteProductAsync(int id)
+    {
+        if (disposed) return;
+        busy = true;
+        try
+        {
+            var ok = await ProductService.Delete(id);
+            if (ok)
+            {
+                Snackbar.Add("Товар удалён", Severity.Info);
+                if (editingId == id)
+                    CancelEdit();
+                await ReloadCategoriesAndProductsAsync();
+            }
+            else
+                Snackbar.Add("Не удалось удалить", Severity.Error);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    public void Dispose() => disposed = true;
+}

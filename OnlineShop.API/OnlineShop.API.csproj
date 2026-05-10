@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OnlineShop.Shared\OnlineShop.Shared.csproj" />
+    <ProjectReference Include="..\OnlineShop.Domain\OnlineShop.Domain.csproj" />
   </ItemGroup>
 
 </Project>

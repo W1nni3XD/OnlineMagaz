@@ -1,6 +1,4 @@
 ﻿@page "/register"
-@inject OnlineShop.Web.Services.AuthService AuthService
-@inject OnlineShop.Web.Services.CustomAuthStateProvider AuthStateProvider
 @using Microsoft.AspNetCore.Components.Authorization
 @using OnlineShop.Web.Services
 @using MudBlazor
@@ -35,6 +33,15 @@
             <MudRadio Value="@("Seller")" Color="Color.Primary">Продавец</MudRadio>
         </MudRadioGroup>
 
+        @if (IsSeller)
+        {
+            <MudTextField @bind-Value="sellerDisplayName"
+                          Label="Имя продавца"
+                          Variant="Variant.Outlined"
+                          HelperText="Будет показано в шапке сайта"
+                          Class="mb-4" />
+        }
+
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    FullWidth="true"
@@ -52,22 +59,32 @@
     private string email = string.Empty;
     private string password = string.Empty;
     private string role = "Buyer";
+    private string sellerDisplayName = string.Empty;
     private string errorMessage = string.Empty;
+
+    private bool IsSeller => string.Equals(role, "Seller", StringComparison.OrdinalIgnoreCase);
 
     private async Task HandleRegister()
     {
         errorMessage = string.Empty;
 
+        if (IsSeller && string.IsNullOrWhiteSpace(sellerDisplayName))
+        {
+            errorMessage = "Введите имя продавца";
+            return;
+        }
+
         var result = await AuthService.Register(new OnlineShop.Shared.DTOs.RegisterDto
         {
             Email = email,
             Password = password,
-            Role = role
+            Role = role,
+            SellerDisplayName = IsSeller ? sellerDisplayName.Trim() : null
         });
 
         if (result == null)
         {
-            errorMessage = "Ошибка регистрации. Попробуйте другой email";
+            errorMessage = "Ошибка регистрации. Попробуйте другой email или проверьте данные";
             return;
         }
 

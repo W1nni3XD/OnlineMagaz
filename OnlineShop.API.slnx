@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="OnlineShop.API/OnlineShop.API.csproj" />
+  <Project Path="OnlineShop.Domain/OnlineShop.Domain.csproj" />
   <Project Path="OnlineShop.Shared/OnlineShop.Shared.csproj" />
   <Project Path="OnlineShop.Web/OnlineShop.Web.csproj" />
 </Solution>

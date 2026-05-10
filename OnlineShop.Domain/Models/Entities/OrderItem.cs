@@ -1,4 +1,4 @@
-﻿namespace OnlineShop.API.Models.Entities;
+﻿namespace OnlineShop.Domain.Models.Entities;
 
 public class OrderItem
 {

@@ -33,6 +33,14 @@ public class CategoryService
         return result ?? new List<CategoryDto>();
     }
 
+    /// <summary>Общие категории + свои (JWT).</summary>
+    public async Task<List<CategoryDto>> GetAvailableForSeller()
+    {
+        var client = await GetClient(true);
+        var result = await client.GetFromJsonAsync<List<CategoryDto>>("api/categories/available");
+        return result ?? new List<CategoryDto>();
+    }
+
     public async Task<bool> Create(CategoryDto dto)
     {
         var client = await GetClient(true);

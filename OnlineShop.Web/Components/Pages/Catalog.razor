@@ -5,6 +5,7 @@
 @inject ProductService ProductService
 @inject CategoryService CategoryService
 @inject CartService CartService
+@inject CartSidebarState CartSidebarState
 @inject NavigationManager Navigation
 @implements IDisposable
 
@@ -138,11 +139,13 @@
     private async Task AddToCart(int productId)
     {
         if (disposed) return;
-        await CartService.AddToCart(new OnlineShop.Shared.DTOs.AddToCartDto
+        var isAdded = await CartService.AddToCart(new OnlineShop.Shared.DTOs.AddToCartDto
         {
             ProductId = productId,
             Quantity = 1
         });
+        if (isAdded)
+            CartSidebarState.Open();
         if (!disposed)
             await InvokeAsync(StateHasChanged);
     }

@@ -1,12 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using OnlineShop.API.Data;
-using OnlineShop.API.Models.Entities;
-using OnlineShop.Shared.DTOs;
-using System.Security.Claims;
-
-namespace OnlineShop.API.Controllers;
+﻿namespace OnlineShop.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -46,6 +38,41 @@ public class ProductsController : ControllerBase
             SellerId = p.SellerId,
             SellerEmail = p.Seller.Email
         }).ToListAsync();
+
+        return Ok(products);
+    }
+
+    /// <summary>Товары текущего продавца (по JWT). Админ видит все товары.</summary>
+    [HttpGet("mine")]
+    [Authorize(Roles = "Seller,Admin")]
+    public async Task<IActionResult> GetMine()
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var role = User.FindFirstValue(ClaimTypes.Role)!;
+
+        var query = _context.Products
+            .Include(p => p.Category)
+            .Include(p => p.Seller)
+            .AsQueryable();
+
+        if (!string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
+            query = query.Where(p => p.SellerId == userId);
+
+        var products = await query
+            .OrderByDescending(p => p.Id)
+            .Select(p => new ProductDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Price = p.Price,
+                Stock = p.Stock,
+                ImageUrl = p.ImageUrl,
+                CategoryId = p.CategoryId,
+                CategoryName = p.Category.Name,
+                SellerId = p.SellerId,
+                SellerEmail = p.Seller.Email
+            }).ToListAsync();
 
         return Ok(products);
     }

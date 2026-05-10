@@ -1,0 +1,167 @@
+﻿@using MudBlazor
+@using OnlineShop.Web.Services
+@using OnlineShop.Shared.DTOs
+@inject CartService CartService
+@inject OrderService OrderService
+@inject CartSidebarState CartSidebarState
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<MudDrawer Open="IsOpen"
+           OpenChanged="HandleDrawerOpenChanged"
+           Anchor="Anchor.End"
+           Elevation="2"
+           Variant="DrawerVariant.Temporary"
+           Width="400px">
+
+    <MudDrawerHeader>
+        <MudText Typo="Typo.h6" Style="font-weight:700;">Корзина</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Close"
+                       OnClick="CloseSidebar" />
+    </MudDrawerHeader>
+
+    <MudContainer Class="pa-4">
+        @if (isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!cartItems.Any())
+        {
+            <MudText Align="Align.Center" Style="color:#999; margin-top:40px;">
+                Корзина пуста
+            </MudText>
+        }
+        else
+        {
+            @foreach (var item in cartItems)
+            {
+                <MudPaper Elevation="1" Class="pa-3 mb-3" Style="border-radius:8px;">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">@item.ProductName</MudText>
+                    <MudText Typo="Typo.body2" Style="color:#666;">@item.ProductPrice.ToString("C") за шт.</MudText>
+                    <MudGrid Class="mt-1" Style="align-items:center;">
+                        <MudItem xs="6">
+                            <MudNumericField Value="@item.Quantity"
+                                             ValueChanged="@(async (int v) => await UpdateQuantity(item.Id, v))"
+                                             Variant="Variant.Outlined"
+                                             Min="1"
+                                             Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="3">
+                            <MudText Style="font-weight:600;">
+                                @((item.ProductPrice * item.Quantity).ToString("C"))
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="3">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Color="Color.Error"
+                                           OnClick="() => RemoveItem(item.Id)" />
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            }
+
+            <MudDivider Class="my-3" />
+
+            <MudText Typo="Typo.h6" Style="font-weight:700;">
+                Итого: @cartItems.Sum(x => x.ProductPrice * x.Quantity).ToString("C")
+            </MudText>
+
+            @if (orderPlaced)
+            {
+                <MudAlert Severity="Severity.Success" Class="mt-3">
+                    Оплачено! Заказ оформлен успешно.
+                </MudAlert>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Class="mt-4"
+                           StartIcon="@Icons.Material.Filled.Payment"
+                           OnClick="PlaceOrder">
+                    Оплатить
+                </MudButton>
+            }
+        }
+    </MudContainer>
+</MudDrawer>
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    private List<CartItemDto> cartItems = new();
+    private bool isLoading = true;
+    private bool orderPlaced = false;
+    private bool disposed = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && !disposed)
+        {
+            await LoadCart();
+        }
+    }
+
+    private async Task LoadCart()
+    {
+        isLoading = true;
+        try
+        {
+            cartItems = await CartService.GetCart();
+        }
+        catch { }
+        isLoading = false;
+        if (!disposed)
+            await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task UpdateQuantity(int id, int quantity)
+    {
+        if (disposed) return;
+        await CartService.UpdateQuantity(id, new UpdateCartItemDto { Quantity = quantity });
+        await LoadCart();
+    }
+
+    private async Task RemoveItem(int id)
+    {
+        if (disposed) return;
+        await CartService.RemoveItem(id);
+        await LoadCart();
+    }
+
+    private async Task PlaceOrder()
+    {
+        if (disposed) return;
+        var result = await OrderService.CreateOrder();
+        if (result)
+        {
+            orderPlaced = true;
+            cartItems.Clear();
+            if (!disposed)
+                await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task CloseSidebar()
+    {
+        await HandleDrawerOpenChanged(false);
+    }
+
+    private async Task HandleDrawerOpenChanged(bool isOpen)
+    {
+        IsOpen = isOpen;
+        CartSidebarState.Set(isOpen);
+        await IsOpenChanged.InvokeAsync(isOpen);
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+    }
+}

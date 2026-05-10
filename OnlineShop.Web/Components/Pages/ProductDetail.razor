@@ -1,0 +1,155 @@
+﻿@page "/product/{Id:int}"
+@using MudBlazor
+@using OnlineShop.Web.Services
+@using OnlineShop.Shared.DTOs
+@inject ProductService ProductService
+@inject CartService CartService
+@inject CartSidebarState CartSidebarState
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (product == null)
+    {
+        <MudAlert Severity="Severity.Error">Товар не найден</MudAlert>
+    }
+    else
+    {
+        <MudGrid>
+            <!-- Изображение -->
+            <MudItem xs="12" md="5">
+                @if (!string.IsNullOrEmpty(product.ImageUrl))
+                {
+                    <MudImage Src="@product.ImageUrl"
+                              Alt="@product.Name"
+                              Width="100"
+                              ObjectFit="ObjectFit.Cover"
+                              Style="width:100%; border-radius:12px;" />
+                }
+                else
+                {
+                    <MudPaper Elevation="0"
+                              Style="height:400px; background:#f5f5f5; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                        <MudIcon Icon="@Icons.Material.Filled.Image"
+                                 Style="font-size:6rem; color:#ccc;" />
+                    </MudPaper>
+                }
+            </MudItem>
+
+            <!-- Информация -->
+            <MudItem xs="12" md="7">
+                <MudText Typo="Typo.h4" Style="font-weight:700;">@product.Name</MudText>
+
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="mt-2">
+                    @product.CategoryName
+                </MudChip>
+
+                <MudText Typo="Typo.h4" Color="Color.Primary" Class="mt-3">
+                    @product.Price.ToString("C")
+                </MudText>
+
+                <MudText Typo="Typo.body1" Class="mt-3" Style="color:#666;">
+                    @product.Description
+                </MudText>
+
+                <MudDivider Class="my-3" />
+
+                <MudText Typo="Typo.body2" Style="color:#999;">
+                    Продавец: @product.SellerEmail
+                </MudText>
+
+                <MudText Typo="Typo.body2" Style="color:#999;" Class="mt-1">
+                    В наличии: @product.Stock шт.
+                </MudText>
+
+                <MudDivider Class="my-3" />
+
+                <MudGrid>
+                    <MudItem xs="4">
+                        <MudNumericField @bind-Value="quantity"
+                                         Label="Количество"
+                                         Variant="Variant.Outlined"
+                                         Min="1"
+                                         Max="@product.Stock" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.ShoppingCart"
+                           Size="Size.Large"
+                           Class="mt-4"
+                           OnClick="AddToCart">
+                    В корзину
+                </MudButton>
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           Class="mt-4 ml-3"
+                           OnClick='() => Navigation.NavigateTo("/catalog")'>
+                    Назад в каталог
+                </MudButton>
+
+                @if (showSuccess)
+                {
+                    <MudAlert Severity="Severity.Success" Class="mt-3">
+                        Товар добавлен в корзину!
+                    </MudAlert>
+                }
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private ProductDto? product;
+    private bool isLoading = true;
+    private bool showSuccess = false;
+    private int quantity = 1;
+    private bool disposed = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !disposed)
+        {
+            try
+            {
+                product = await ProductService.GetById(Id);
+            }
+            catch { }
+
+            isLoading = false;
+            if (!disposed)
+                await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task AddToCart()
+    {
+        if (disposed) return;
+        var ok = await CartService.AddToCart(new AddToCartDto
+        {
+            ProductId = Id,
+            Quantity = quantity
+        });
+        if (ok)
+        {
+            showSuccess = true;
+            CartSidebarState.Open();
+        }
+        if (!disposed)
+            await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+    }
+}

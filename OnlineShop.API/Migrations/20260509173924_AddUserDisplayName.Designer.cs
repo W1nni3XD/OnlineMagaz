@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OnlineShop.API.Data;
@@ -11,9 +12,11 @@ using OnlineShop.API.Data;
 namespace OnlineShop.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260509173924_AddUserDisplayName")]
+    partial class AddUserDisplayName
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -64,12 +67,7 @@ namespace OnlineShop.API.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int?>("SellerId")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("SellerId");
 
                     b.ToTable("Categories");
                 });
@@ -222,16 +220,6 @@ namespace OnlineShop.API.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("OnlineShop.Domain.Models.Entities.Category", b =>
-                {
-                    b.HasOne("OnlineShop.Domain.Models.Entities.User", "Seller")
-                        .WithMany("OwnedCategories")
-                        .HasForeignKey("SellerId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Seller");
-                });
-
             modelBuilder.Entity("OnlineShop.Domain.Models.Entities.Order", b =>
                 {
                     b.HasOne("OnlineShop.Domain.Models.Entities.User", "User")
@@ -303,8 +291,6 @@ namespace OnlineShop.API.Migrations
                     b.Navigation("CartItems");
 
                     b.Navigation("Orders");
-
-                    b.Navigation("OwnedCategories");
 
                     b.Navigation("Products");
                 });

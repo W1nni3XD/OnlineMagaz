@@ -1,0 +1,36 @@
+@page "/cart"
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using OnlineShop.Web.Services
+@inject CartSidebarState CartSidebarState
+
+<AuthorizeView>
+    <Authorized>
+        <MudText Typo="Typo.body1" Class="mb-2">
+            Корзина открывается в боковой панели справа. Если панель закрыта, нажмите иконку корзины в шапке.
+        </MudText>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.ShoppingCart"
+                   OnClick="OpenCart">
+            Открыть корзину
+        </MudButton>
+    </Authorized>
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Warning">
+            Войдите в аккаунт, чтобы пользоваться корзиной.
+        </MudAlert>
+        <MudButton Href="/login" Class="mt-2" Variant="Variant.Filled" Color="Color.Primary">
+            Войти
+        </MudButton>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    protected override void OnInitialized()
+    {
+        CartSidebarState.Open();
+    }
+
+    private void OpenCart() => CartSidebarState.Open();
+}

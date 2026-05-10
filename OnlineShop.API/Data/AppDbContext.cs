@@ -1,7 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using OnlineShop.API.Models.Entities;
-
-namespace OnlineShop.API.Data;
+﻿namespace OnlineShop.API.Data;
 
 public class AppDbContext : DbContext
 {
@@ -32,6 +29,12 @@ public class AppDbContext : DbContext
             .HasOne(p => p.Seller)
             .WithMany(u => u.Products)
             .HasForeignKey(p => p.SellerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Category>()
+            .HasOne(c => c.Seller)
+            .WithMany(u => u.OwnedCategories)
+            .HasForeignKey(c => c.SellerId)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Product>()

@@ -1,12 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using OnlineShop.API.Data;
-using OnlineShop.API.Models.Entities;
-using OnlineShop.Shared.DTOs;
-using System.Security.Claims;
-
-namespace OnlineShop.API.Controllers;
+﻿namespace OnlineShop.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

@@ -44,6 +44,14 @@ public class ProductService
         return await client.GetFromJsonAsync<ProductDto>($"api/products/{id}");
     }
 
+    /// <summary>Товары текущего продавца (требуется JWT).</summary>
+    public async Task<List<ProductDto>> GetMine()
+    {
+        var client = await GetClient(true);
+        var result = await client.GetFromJsonAsync<List<ProductDto>>("api/products/mine");
+        return result ?? new List<ProductDto>();
+    }
+
     public async Task<bool> Create(CreateProductDto dto)
     {
         var client = await GetClient(true);

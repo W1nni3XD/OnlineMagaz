@@ -1,6 +1,12 @@
 ﻿@inherits LayoutComponentBase
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@rendermode InteractiveServer
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using OnlineShop.Web.Services
+@inject CartSidebarState CartSidebarState
+@implements IDisposable
 
 <MudLayout>
     <MudAppBar Elevation="1" Color="Color.Primary">
@@ -11,13 +17,19 @@
         <MudText Typo="Typo.h6" Class="ml-3">OnlineShop</MudText>
         <MudSpacer />
         <AuthorizeView>
+            <Authorized>
+                <MudText Typo="Typo.body2" Class="mr-2" Style="align-self:center;">
+                    @(GetProfileLabel(context.User))
+                </MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.ShoppingCart"
+                               Color="Color.Inherit"
+                               OnClick="OpenCart" />
+                <MudButton Href="/logout" Color="Color.Inherit">Выйти</MudButton>
+            </Authorized>
             <NotAuthorized>
                 <MudButton Href="/login" Color="Color.Inherit">Войти</MudButton>
                 <MudButton Href="/register" Color="Color.Inherit">Регистрация</MudButton>
             </NotAuthorized>
-            <Authorized>
-                <MudButton Href="/logout" Color="Color.Inherit">Выйти</MudButton>
-            </Authorized>
         </AuthorizeView>
     </MudAppBar>
 
@@ -33,6 +45,8 @@
             @Body
         </MudContainer>
     </MudMainContent>
+
+    <CartSidebar @bind-IsOpen="CartOpen" />
 </MudLayout>
 
 <MudThemeProvider />
@@ -42,9 +56,49 @@
 
 @code {
     private bool drawerOpen = true;
+    private bool cartOpen = false;
+    private bool CartOpen
+    {
+        get => cartOpen;
+        set
+        {
+            if (cartOpen == value) return;
+            cartOpen = value;
+            CartSidebarState.Set(value);
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        cartOpen = CartSidebarState.IsOpen;
+        CartSidebarState.OnChange += HandleCartSidebarStateChanged;
+    }
 
     private void ToggleDrawer()
     {
         drawerOpen = !drawerOpen;
+    }
+
+    private void OpenCart()
+    {
+        CartSidebarState.Open();
+    }
+
+    private void HandleCartSidebarStateChanged()
+    {
+        cartOpen = CartSidebarState.IsOpen;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        CartSidebarState.OnChange -= HandleCartSidebarStateChanged;
+    }
+
+    private static string GetProfileLabel(ClaimsPrincipal user)
+    {
+        return user.FindFirst("profile_display")?.Value
+               ?? user.FindFirst(ClaimTypes.Email)?.Value
+               ?? string.Empty;
     }
 }
