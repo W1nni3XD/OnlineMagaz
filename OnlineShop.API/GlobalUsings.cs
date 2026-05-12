@@ -5,4 +5,4 @@ global using System.Security.Claims;
 global using OnlineShop.API.Data;
 global using OnlineShop.API.Services;
 global using OnlineShop.Domain.Models.Entities;
-global using OnlineShop.Shared.DTOs;
+global using OnlineShop.Domain.DTOs;

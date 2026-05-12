@@ -51,7 +51,7 @@
     {
         errorMessage = string.Empty;
 
-        var result = await AuthService.Login(new OnlineShop.Shared.DTOs.LoginDto
+        var result = await AuthService.Login(new OnlineShop.Domain.DTOs.LoginDto
         {
             Email = email,
             Password = password

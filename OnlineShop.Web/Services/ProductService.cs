@@ -1,5 +1,5 @@
 ﻿using System.Net.Http.Json;
-using OnlineShop.Shared.DTOs;
+using OnlineShop.Domain.DTOs;
 
 namespace OnlineShop.Web.Services;
 

@@ -1,7 +1,4 @@
-﻿using System.Net.Http.Json;
-using OnlineShop.Shared.DTOs;
-
-namespace OnlineShop.Web.Services;
+﻿namespace OnlineShop.Web.Services;
 
 public class OrderService
 {

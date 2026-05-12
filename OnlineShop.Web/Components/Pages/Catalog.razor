@@ -1,7 +1,7 @@
 ﻿@page "/catalog"
 @using MudBlazor
 @using OnlineShop.Web.Services
-@using OnlineShop.Shared.DTOs
+@using OnlineShop.Domain.DTOs
 @inject ProductService ProductService
 @inject CategoryService CategoryService
 @inject CartService CartService
@@ -139,7 +139,7 @@
     private async Task AddToCart(int productId)
     {
         if (disposed) return;
-        var isAdded = await CartService.AddToCart(new OnlineShop.Shared.DTOs.AddToCartDto
+        var isAdded = await CartService.AddToCart(new OnlineShop.Domain.DTOs.AddToCartDto
         {
             ProductId = productId,
             Quantity = 1

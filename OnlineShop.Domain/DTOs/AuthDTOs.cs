@@ -1,4 +1,4 @@
-﻿namespace OnlineShop.Shared.DTOs;
+﻿namespace OnlineShop.Domain.DTOs;
 
 public class RegisterDto
 {

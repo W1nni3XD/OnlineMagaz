@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace OnlineShop.Domain.DTOs;
 
-namespace OnlineShop.Shared.DTOs;
 public class CategoryDto
 {
     public int Id { get; set; }
