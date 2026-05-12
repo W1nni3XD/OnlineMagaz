@@ -1,0 +1,117 @@
+﻿@page "/admin"
+@using MudBlazor
+@using OnlineShop.Web.Services
+@using OnlineShop.Shared.DTOs
+@inject OrderService OrderService
+@implements IDisposable
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h5" Style="font-weight:700;" Class="mb-4">Админ панель — Заказы</MudText>
+
+    @if (isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (!orders.Any())
+    {
+        <MudAlert Severity="Severity.Info">Заказов пока нет</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="orders" Hover="true" Striped="true" Elevation="2">
+            <HeaderContent>
+                <MudTh>№</MudTh>
+                <MudTh>Покупатель</MudTh>
+                <MudTh>Дата</MudTh>
+                <MudTh>Сумма</MudTh>
+                <MudTh>Статус</MudTh>
+                <MudTh>Действие</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Id</MudTd>
+                <MudTd>@context.UserEmail</MudTd>
+                <MudTd>@context.CreatedAt.ToString("dd.MM.yyyy HH:mm")</MudTd>
+                <MudTd>@context.TotalPrice.ToString("C")</MudTd>
+                <MudTd>
+                    <MudChip T="string" Color="@GetStatusColor(context.Status)" Size="Size.Small">
+                        @GetStatusText(context.Status)
+                    </MudChip>
+                </MudTd>
+                <MudTd>
+                    <MudSelect T="string"
+                               Value="@context.Status"
+                               ValueChanged="@(async (string s) => await ChangeStatus(context.Id, s))"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Style="min-width:150px;">
+                        <MudSelectItem Value="@("Pending")">Ожидает</MudSelectItem>
+                        <MudSelectItem Value="@("Processing")">В обработке</MudSelectItem>
+                        <MudSelectItem Value="@("Shipped")">Отправлен</MudSelectItem>
+                        <MudSelectItem Value="@("Delivered")">Доставлен</MudSelectItem>
+                        <MudSelectItem Value="@("Cancelled")">Отменён</MudSelectItem>
+                    </MudSelect>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private List<OrderDto> orders = new();
+    private bool isLoading = true;
+    private bool disposed = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !disposed)
+        {
+            try
+            {
+                orders = await OrderService.GetAllOrders();
+            }
+            catch { }
+
+            isLoading = false;
+            if (!disposed)
+                await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task ChangeStatus(int orderId, string status)
+    {
+        if (disposed) return;
+        await OrderService.UpdateStatus(orderId, new UpdateOrderStatusDto { Status = status });
+        try
+        {
+            orders = await OrderService.GetAllOrders();
+        }
+        catch { }
+        if (!disposed)
+            await InvokeAsync(StateHasChanged);
+    }
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "Pending" => Color.Warning,
+        "Processing" => Color.Info,
+        "Shipped" => Color.Primary,
+        "Delivered" => Color.Success,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetStatusText(string status) => status switch
+    {
+        "Pending" => "Ожидает",
+        "Processing" => "В обработке",
+        "Shipped" => "Отправлен",
+        "Delivered" => "Доставлен",
+        "Cancelled" => "Отменён",
+        _ => status
+    };
+
+    public void Dispose()
+    {
+        disposed = true;
+    }
+}

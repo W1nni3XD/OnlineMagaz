@@ -1,0 +1,113 @@
+﻿@page "/orders"
+@using MudBlazor
+@using OnlineShop.Web.Services
+@using OnlineShop.Shared.DTOs
+@inject OrderService OrderService
+@implements IDisposable
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h5" Style="font-weight:700;" Class="mb-4">Мои заказы</MudText>
+
+    @if (isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (!orders.Any())
+    {
+        <MudAlert Severity="Severity.Info">У вас пока нет заказов</MudAlert>
+    }
+    else
+    {
+        @foreach (var order in orders)
+        {
+            <MudPaper Elevation="2" Class="pa-4 mb-4" Style="border-radius:12px;">
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                            Заказ №@order.Id
+                        </MudText>
+                        <MudText Typo="Typo.body2" Style="color:#666;">
+                            @order.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                        </MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" Style="text-align:right;">
+                        <MudChip T="string" Color="@GetStatusColor(order.Status)" Size="Size.Small">
+                            @GetStatusText(order.Status)
+                        </MudChip>
+                        <MudText Typo="Typo.h6" Style="font-weight:700;" Class="mt-1">
+                            @order.TotalPrice.ToString("C")
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+
+                <MudDivider Class="my-3" />
+
+                @foreach (var item in order.Items)
+                {
+                    <MudGrid Class="mb-1">
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.body2">@item.ProductName</MudText>
+                        </MudItem>
+                        <MudItem xs="3">
+                            <MudText Typo="Typo.body2" Style="color:#666;">
+                                @item.Quantity шт.
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="3" Style="text-align:right;">
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">
+                                @((item.Price * item.Quantity).ToString("C"))
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                }
+            </MudPaper>
+        }
+    }
+</MudContainer>
+
+@code {
+    private List<OrderDto> orders = new();
+    private bool isLoading = true;
+    private bool disposed = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !disposed)
+        {
+            try
+            {
+                orders = await OrderService.GetMyOrders();
+            }
+            catch { }
+
+            isLoading = false;
+            if (!disposed)
+                await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "Pending" => Color.Warning,
+        "Processing" => Color.Info,
+        "Shipped" => Color.Primary,
+        "Delivered" => Color.Success,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetStatusText(string status) => status switch
+    {
+        "Pending" => "Ожидает",
+        "Processing" => "В обработке",
+        "Shipped" => "Отправлен",
+        "Delivered" => "Доставлен",
+        "Cancelled" => "Отменён",
+        _ => status
+    };
+
+    public void Dispose()
+    {
+        disposed = true;
+    }
+}
