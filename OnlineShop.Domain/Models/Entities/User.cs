@@ -10,7 +10,6 @@ public class User
     public string? DisplayName { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public ICollection<Category> OwnedCategories { get; set; } = new List<Category>();
     public ICollection<Product> Products { get; set; } = new List<Product>();
     public ICollection<Order> Orders { get; set; } = new List<Order>();
     public ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();

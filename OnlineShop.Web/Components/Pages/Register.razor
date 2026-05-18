@@ -19,12 +19,19 @@
                       Label="Email"
                       Variant="Variant.Outlined"
                       InputType="InputType.Email"
+                      Required="true"
+                      RequiredError="Email обязателен"
+                      Validation="@(new Func<string, string?>(ValidateEmail))"
                       Class="mb-3" />
 
         <MudTextField @bind-Value="password"
                       Label="Пароль"
                       Variant="Variant.Outlined"
                       InputType="InputType.Password"
+                      Required="true"
+                      RequiredError="Пароль обязателен"
+                      Validation="@(new Func<string, string?>(ValidatePassword))"
+                      HelperText="Минимум 6 символов"
                       Class="mb-3" />
 
         <MudText Class="mb-2">Роль</MudText>
@@ -38,6 +45,9 @@
             <MudTextField @bind-Value="sellerDisplayName"
                           Label="Имя продавца"
                           Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Имя продавца обязательно"
+                          Validation="@(new Func<string, string?>(ValidateSellerName))"
                           HelperText="Будет показано в шапке сайта"
                           Class="mb-4" />
         }
@@ -64,17 +74,81 @@
 
     private bool IsSeller => string.Equals(role, "Seller", StringComparison.OrdinalIgnoreCase);
 
+    private string? ValidateEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return "Email обязателен";
+
+        // Проверка базового формата email
+        var parts = email.Split('@');
+        if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
+            return "Введите корректный email";
+
+        var domain = parts[1];
+        if (!domain.Contains(".") || domain.StartsWith(".") || domain.EndsWith("."))
+            return "Введите корректный email";
+
+        return null;
+    }
+
+    private string? ValidatePassword(string password)
+    {
+        if (string.IsNullOrWhiteSpace(password))
+            return "Пароль обязателен";
+
+        if (password.Length < 6)
+            return "Пароль должен содержать минимум 6 символов";
+
+        return null;
+    }
+
+    private string? ValidateSellerName(string name)
+    {
+        if (IsSeller && string.IsNullOrWhiteSpace(name))
+            return "Имя продавца обязательно";
+
+        if (IsSeller && name.Length < 2)
+            return "Имя должно содержать минимум 2 символа";
+
+        return null;
+    }
+
     private async Task HandleRegister()
     {
         errorMessage = string.Empty;
 
-        if (IsSeller && string.IsNullOrWhiteSpace(sellerDisplayName))
+        // Валидация перед отправкой
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
-            errorMessage = "Введите имя продавца";
+            errorMessage = "Заполните все обязательные поля";
             return;
         }
 
-        var result = await AuthService.Register(new OnlineShop.Domain.DTOs.RegisterDto
+        var emailError = ValidateEmail(email);
+        if (emailError != null)
+        {
+            errorMessage = emailError;
+            return;
+        }
+
+        var passwordError = ValidatePassword(password);
+        if (passwordError != null)
+        {
+            errorMessage = passwordError;
+            return;
+        }
+
+        if (IsSeller)
+        {
+            var sellerNameError = ValidateSellerName(sellerDisplayName);
+            if (sellerNameError != null)
+            {
+                errorMessage = sellerNameError;
+                return;
+            }
+        }
+
+        var (result, error) = await AuthService.Register(new OnlineShop.Domain.DTOs.RegisterDto
         {
             Email = email,
             Password = password,
@@ -84,7 +158,7 @@
 
         if (result == null)
         {
-            errorMessage = "Ошибка регистрации. Попробуйте другой email или проверьте данные";
+            errorMessage = error ?? "Ошибка регистрации. Возможно, этот email уже используется";
             return;
         }
 

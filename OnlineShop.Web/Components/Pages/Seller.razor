@@ -14,57 +14,6 @@
 <MudText Typo="Typo.h5" Class="mb-4">Мои товары</MudText>
 
 <MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudText Typo="Typo.subtitle1" Class="mb-3">Новая категория</MudText>
-    <MudText Typo="Typo.body2" Class="mb-3" Style="color: var(--mud-palette-text-secondary);">
-        Категорию видят все в каталоге; к своей категории можете привязать только вы (и общие категории админа, если есть).
-    </MudText>
-    <MudGrid>
-        <MudItem xs="12" md="4">
-            <MudTextField @bind-Value="newCategoryName"
-                          Label="Название категории"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense" />
-        </MudItem>
-        <MudItem xs="12" md="6">
-            <MudTextField @bind-Value="newCategoryDescription"
-                          Label="Описание"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense" />
-        </MudItem>
-        <MudItem xs="12" md="2" Class="d-flex align-end">
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Secondary"
-                       FullWidth="true"
-                       OnClick="CreateCategoryAsync"
-                       Disabled="busy">
-                Создать
-            </MudButton>
-        </MudItem>
-    </MudGrid>
-
-    @if (myCategories.Any())
-    {
-        <MudText Typo="Typo.caption" Class="mt-3 mb-1">Ваши категории</MudText>
-        <MudList T="string" Dense="true">
-            @foreach (var c in myCategories)
-            {
-                <MudListItem>
-                    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
-                        <span>@c.Name</span>
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                       Color="Color.Error"
-                                       Size="Size.Small"
-                                       aria-label="Удалить категорию"
-                                       OnClick="() => DeleteCategoryAsync(c.Id)"
-                                       Disabled="busy" />
-                    </div>
-                </MudListItem>
-            }
-        </MudList>
-    }
-</MudPaper>
-
-<MudPaper Elevation="2" Class="pa-4 mb-4">
     <MudText Typo="Typo.subtitle1" Class="mb-3">
         @(editingId == null ? "Новый товар" : "Редактирование товара")
     </MudText>
@@ -72,7 +21,7 @@
     @if (!categories.Any())
     {
         <MudAlert Severity="Severity.Info">
-            Сначала создайте категорию — без неё товар не добавить.
+            Категории создаются администратором. Обратитесь к админу для добавления нужной категории.
         </MudAlert>
     }
     else
@@ -82,7 +31,9 @@
                 <MudTextField @bind-Value="form.Name"
                               Label="Название"
                               Variant="Variant.Outlined"
-                              Required="true" />
+                              Required="true"
+                              RequiredError="Название обязательно"
+                              Validation="@(new Func<string, string?>(ValidateProductName))" />
             </MudItem>
             <MudItem xs="12" md="6">
                 <MudSelect T="int"
@@ -106,16 +57,22 @@
                 <MudNumericField @bind-Value="form.Price"
                                  Label="Цена"
                                  Variant="Variant.Outlined"
-                                 Min="0m"
+                                 Min="0.01m"
+                                 Required="true"
+                                 RequiredError="Цена обязательна"
                                  Format="N2"
-                                 Culture="@System.Globalization.CultureInfo.GetCultureInfo("ru-RU")" />
+                                 Culture="@System.Globalization.CultureInfo.GetCultureInfo("ru-RU")"
+                                 HelperText="Должна быть больше 0" />
             </MudItem>
             <MudItem xs="12" sm="4">
                 <MudNumericField @bind-Value="form.Stock"
                                  Label="Остаток на складе"
                                  Variant="Variant.Outlined"
                                  Min="0"
-                                 Step="1" />
+                                 Required="true"
+                                 RequiredError="Остаток обязателен"
+                                 Step="1"
+                                 HelperText="Не может быть отрицательным" />
             </MudItem>
             <MudItem xs="12" sm="4">
                 <MudTextField @bind-Value="imageUrlBind"
@@ -182,15 +139,12 @@ else
 @code {
     private readonly List<ProductDto> myProducts = new();
     private List<CategoryDto> categories = new();
-    private IEnumerable<CategoryDto> myCategories => categories.Where(c => c.SellerId.HasValue).OrderBy(c => c.Name);
     private CreateProductDto form = new();
     private string imageUrlBind = string.Empty;
     private int? editingId;
     private bool isLoading = true;
     private bool busy;
     private bool disposed;
-    private string newCategoryName = string.Empty;
-    private string newCategoryDescription = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -219,64 +173,6 @@ else
         }
     }
 
-    private async Task CreateCategoryAsync()
-    {
-        if (disposed) return;
-        if (string.IsNullOrWhiteSpace(newCategoryName))
-        {
-            Snackbar.Add("Введите название категории", Severity.Warning);
-            return;
-        }
-
-        busy = true;
-        try
-        {
-            var nameSaved = newCategoryName.Trim();
-            var ok = await CategoryService.Create(new CategoryDto
-            {
-                Name = nameSaved,
-                Description = newCategoryDescription?.Trim() ?? string.Empty
-            });
-            if (ok)
-            {
-                Snackbar.Add("Категория создана", Severity.Success);
-                newCategoryName = string.Empty;
-                newCategoryDescription = string.Empty;
-                await ReloadCategoriesAndProductsAsync();
-                var created = categories.FirstOrDefault(c => c.Name == nameSaved);
-                if (created != null)
-                    form.CategoryId = created.Id;
-            }
-            else
-                Snackbar.Add("Не удалось создать категорию", Severity.Error);
-        }
-        finally
-        {
-            busy = false;
-        }
-    }
-
-    private async Task DeleteCategoryAsync(int id)
-    {
-        if (disposed) return;
-        busy = true;
-        try
-        {
-            var ok = await CategoryService.Delete(id);
-            if (ok)
-            {
-                Snackbar.Add("Категория удалена", Severity.Info);
-                await ReloadCategoriesAndProductsAsync();
-            }
-            else
-                Snackbar.Add("Нельзя удалить (есть товары или нет прав)", Severity.Error);
-        }
-        finally
-        {
-            busy = false;
-        }
-    }
-
     private void StartEdit(ProductDto p)
     {
         editingId = p.Id;
@@ -302,17 +198,47 @@ else
             form.CategoryId = categories[0].Id;
     }
 
+    private string? ValidateProductName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "Название обязательно";
+
+        if (name.Length < 3)
+            return "Название должно содержать минимум 3 символа";
+
+        if (name.Length > 200)
+            return "Название слишком длинное (максимум 200 символов)";
+
+        return null;
+    }
+
     private async Task SaveAsync()
     {
         if (disposed) return;
-        if (string.IsNullOrWhiteSpace(form.Name))
+
+        // Валидация перед отправкой
+        var nameError = ValidateProductName(form.Name);
+        if (nameError != null)
         {
-            Snackbar.Add("Введите название товара", Severity.Warning);
+            Snackbar.Add(nameError, Severity.Warning);
             return;
         }
+
         if (!categories.Any() || form.CategoryId == 0)
         {
             Snackbar.Add("Выберите категорию", Severity.Warning);
+            return;
+        }
+
+        if (form.Price <= 0)
+        {
+            Snackbar.Add("Цена должна быть больше 0", Severity.Warning);
+            return;
+        }
+
+        if (form.Stock < 0)
+        {
+            Snackbar.Add("Остаток не может быть отрицательным", Severity.Warning);
             return;
         }
 

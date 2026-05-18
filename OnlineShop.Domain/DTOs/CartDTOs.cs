@@ -8,6 +8,7 @@ public class CartItemDto
     public decimal ProductPrice { get; set; }
     public string ImageUrl { get; set; } = string.Empty;
     public int Quantity { get; set; }
+    public int ProductStock { get; set; }
 }
 
 public class AddToCartDto

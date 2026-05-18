@@ -27,7 +27,8 @@ public class CartController : ControllerBase
                 ProductName = c.Product.Name,
                 ProductPrice = c.Product.Price,
                 ImageUrl = c.Product.ImageUrl,
-                Quantity = c.Quantity
+                Quantity = c.Quantity,
+                ProductStock = c.Product.Stock
             }).ToListAsync();
 
         return Ok(items);
@@ -38,12 +39,29 @@ public class CartController : ControllerBase
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
+        // Проверяем наличие товара на складе
+        var product = await _context.Products.FindAsync(dto.ProductId);
+        if (product == null)
+            return NotFound("Товар не найден");
+
         var existing = await _context.CartItems
             .FirstOrDefaultAsync(c => c.UserId == userId && c.ProductId == dto.ProductId);
 
+        int newQuantity = dto.Quantity;
         if (existing != null)
         {
-            existing.Quantity += dto.Quantity;
+            newQuantity = existing.Quantity + dto.Quantity;
+        }
+
+        // Проверяем что не превышаем остаток на складе
+        if (newQuantity > product.Stock)
+        {
+            return BadRequest($"Недостаточно товара на складе. Доступно: {product.Stock} шт.");
+        }
+
+        if (existing != null)
+        {
+            existing.Quantity = newQuantity;
         }
         else
         {
@@ -65,9 +83,16 @@ public class CartController : ControllerBase
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
         var item = await _context.CartItems
+            .Include(c => c.Product)
             .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
 
         if (item == null) return NotFound();
+
+        // Проверяем что не превышаем остаток на складе
+        if (dto.Quantity > item.Product.Stock)
+        {
+            return BadRequest($"Недостаточно товара на складе. Доступно: {item.Product.Stock} шт.");
+        }
 
         item.Quantity = dto.Quantity;
         await _context.SaveChangesAsync();

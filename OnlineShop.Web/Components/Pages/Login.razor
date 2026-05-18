@@ -21,12 +21,17 @@
                       Label="Email"
                       Variant="Variant.Outlined"
                       InputType="InputType.Email"
+                      Required="true"
+                      RequiredError="Email обязателен"
+                      Validation="@(new Func<string, string?>(ValidateEmail))"
                       Class="mb-3" />
 
         <MudTextField @bind-Value="password"
                       Label="Пароль"
                       Variant="Variant.Outlined"
                       InputType="InputType.Password"
+                      Required="true"
+                      RequiredError="Пароль обязателен"
                       Class="mb-4" />
 
         <MudButton Variant="Variant.Filled"
@@ -47,11 +52,42 @@
     private string password = string.Empty;
     private string errorMessage = string.Empty;
 
+    private string? ValidateEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return "Email обязателен";
+
+        // Проверка базового формата email
+        var parts = email.Split('@');
+        if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
+            return "Введите корректный email";
+
+        var domain = parts[1];
+        if (!domain.Contains(".") || domain.StartsWith(".") || domain.EndsWith("."))
+            return "Введите корректный email";
+
+        return null;
+    }
+
     private async Task HandleLogin()
     {
         errorMessage = string.Empty;
 
-        var result = await AuthService.Login(new OnlineShop.Domain.DTOs.LoginDto
+        // Валидация перед отправкой
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "Заполните все поля";
+            return;
+        }
+
+        var emailError = ValidateEmail(email);
+        if (emailError != null)
+        {
+            errorMessage = emailError;
+            return;
+        }
+
+        var (result, error) = await AuthService.Login(new OnlineShop.Domain.DTOs.LoginDto
         {
             Email = email,
             Password = password
@@ -59,7 +95,7 @@
 
         if (result == null)
         {
-            errorMessage = "Неверный email или пароль";
+            errorMessage = error ?? "Неверный email или пароль";
             return;
         }
 

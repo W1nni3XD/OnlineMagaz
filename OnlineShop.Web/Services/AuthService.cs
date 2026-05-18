@@ -15,34 +15,48 @@ public class AuthService
         _js = js;
     }
 
-    public async Task<AuthResponseDto?> Register(RegisterDto dto)
+    public async Task<(AuthResponseDto? response, string? error)> Register(RegisterDto dto)
     {
         var client = _httpClientFactory.CreateClient("API");
         var response = await client.PostAsJsonAsync("api/auth/register", dto);
-        if (!response.IsSuccessStatusCode) return null;
-        return await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            return (null, string.IsNullOrWhiteSpace(errorMessage) ? "Ошибка регистрации" : errorMessage);
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+        return (result, null);
     }
 
-    public async Task<AuthResponseDto?> Login(LoginDto dto)
+    public async Task<(AuthResponseDto? response, string? error)> Login(LoginDto dto)
     {
         var client = _httpClientFactory.CreateClient("API");
         var response = await client.PostAsJsonAsync("api/auth/login", dto);
-        if (!response.IsSuccessStatusCode) return null;
-        return await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            return (null, string.IsNullOrWhiteSpace(errorMessage) ? "Неверный email или пароль" : errorMessage);
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+        return (result, null);
     }
 
     public async Task SaveToken(string token)
     {
-        await _js.InvokeVoidAsync("sessionStorage.setItem", "token", token);
+        await _js.InvokeVoidAsync("localStorage.setItem", "token", token);
     }
 
     public async Task<string?> GetToken()
     {
-        return await _js.InvokeAsync<string?>("sessionStorage.getItem", "token");
+        return await _js.InvokeAsync<string?>("localStorage.getItem", "token");
     }
 
     public async Task RemoveToken()
     {
-        await _js.InvokeVoidAsync("sessionStorage.removeItem", "token");
+        await _js.InvokeVoidAsync("localStorage.removeItem", "token");
     }
 }

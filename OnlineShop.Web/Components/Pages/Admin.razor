@@ -3,62 +3,146 @@
 @using OnlineShop.Web.Services
 @using OnlineShop.Domain.DTOs
 @inject OrderService OrderService
+@inject CategoryService CategoryService
+@inject ISnackbar Snackbar
 @implements IDisposable
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudText Typo="Typo.h5" Style="font-weight:700;" Class="mb-4">Админ панель — Заказы</MudText>
+    <MudText Typo="Typo.h5" Style="font-weight:700;" Class="mb-4">Админ панель</MudText>
 
-    @if (isLoading)
-    {
-        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-    }
-    else if (!orders.Any())
-    {
-        <MudAlert Severity="Severity.Info">Заказов пока нет</MudAlert>
-    }
-    else
-    {
-        <MudTable Items="orders" Hover="true" Striped="true" Elevation="2">
-            <HeaderContent>
-                <MudTh>№</MudTh>
-                <MudTh>Покупатель</MudTh>
-                <MudTh>Дата</MudTh>
-                <MudTh>Сумма</MudTh>
-                <MudTh>Статус</MudTh>
-                <MudTh>Действие</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd>@context.Id</MudTd>
-                <MudTd>@context.UserEmail</MudTd>
-                <MudTd>@context.CreatedAt.ToString("dd.MM.yyyy HH:mm")</MudTd>
-                <MudTd>@context.TotalPrice.ToString("C")</MudTd>
-                <MudTd>
-                    <MudChip T="string" Color="@GetStatusColor(context.Status)" Size="Size.Small">
-                        @GetStatusText(context.Status)
-                    </MudChip>
-                </MudTd>
-                <MudTd>
-                    <MudSelect T="string"
-                               Value="@context.Status"
-                               ValueChanged="@(async (string s) => await ChangeStatus(context.Id, s))"
-                               Variant="Variant.Outlined"
-                               Margin="Margin.Dense"
-                               Style="min-width:150px;">
-                        <MudSelectItem Value="@("Pending")">Ожидает</MudSelectItem>
-                        <MudSelectItem Value="@("Processing")">В обработке</MudSelectItem>
-                        <MudSelectItem Value="@("Shipped")">Отправлен</MudSelectItem>
-                        <MudSelectItem Value="@("Delivered")">Доставлен</MudSelectItem>
-                        <MudSelectItem Value="@("Cancelled")">Отменён</MudSelectItem>
-                    </MudSelect>
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
-    }
+    <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+        <MudTabPanel Text="Категории">
+            <MudPaper Elevation="2" Class="pa-4 mb-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">
+                    @(editingCategoryId == null ? "Новая категория" : "Редактирование категории")
+                </MudText>
+                <MudGrid>
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="categoryForm.Name"
+                                      Label="Название категории"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      RequiredError="Название обязательно"
+                                      Validation="@(new Func<string, string?>(ValidateCategoryName))" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="categoryForm.Description"
+                                      Label="Описание"
+                                      Variant="Variant.Outlined"
+                                      HelperText="Необязательно" />
+                    </MudItem>
+                    <MudItem xs="12" md="2" Class="d-flex align-end">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   OnClick="SaveCategoryAsync"
+                                   Disabled="busy">
+                            @(editingCategoryId == null ? "Создать" : "Сохранить")
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+                @if (editingCategoryId != null)
+                {
+                    <MudButton Variant="Variant.Text"
+                               Class="mt-2"
+                               OnClick="CancelCategoryEdit"
+                               Disabled="busy">
+                        Отмена
+                    </MudButton>
+                }
+            </MudPaper>
+
+            @if (categoriesLoading)
+            {
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            }
+            else if (!categories.Any())
+            {
+                <MudAlert Severity="Severity.Info">Категорий пока нет</MudAlert>
+            }
+            else
+            {
+                <MudTable Items="categories" Hover="true" Striped="true" Elevation="2">
+                    <HeaderContent>
+                        <MudTh>Название</MudTh>
+                        <MudTh>Описание</MudTh>
+                        <MudTh>Действия</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Name</MudTd>
+                        <MudTd>@context.Description</MudTd>
+                        <MudTd>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="() => StartCategoryEdit(context)">
+                                Изменить
+                            </MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="() => DeleteCategoryAsync(context.Id)">
+                                Удалить
+                            </MudButton>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Заказы">
+            @if (isLoading)
+            {
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            }
+            else if (!orders.Any())
+            {
+                <MudAlert Severity="Severity.Info">Заказов пока нет</MudAlert>
+            }
+            else
+            {
+                <MudTable Items="orders" Hover="true" Striped="true" Elevation="2">
+                    <HeaderContent>
+                        <MudTh>№</MudTh>
+                        <MudTh>Покупатель</MudTh>
+                        <MudTh>Дата</MudTh>
+                        <MudTh>Сумма</MudTh>
+                        <MudTh>Статус</MudTh>
+                        <MudTh>Действие</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Id</MudTd>
+                        <MudTd>@context.UserEmail</MudTd>
+                        <MudTd>@context.CreatedAt.ToString("dd.MM.yyyy HH:mm")</MudTd>
+                        <MudTd>@context.TotalPrice.ToString("C")</MudTd>
+                        <MudTd>
+                            <MudChip T="string" Color="@GetStatusColor(context.Status)" Size="Size.Small">
+                                @GetStatusText(context.Status)
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>
+                            <MudSelect T="string"
+                                       Value="@context.Status"
+                                       ValueChanged="@(async (string s) => await ChangeStatus(context.Id, s))"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Style="min-width:150px;">
+                                <MudSelectItem Value="@("Pending")">Ожидает</MudSelectItem>
+                                <MudSelectItem Value="@("Processing")">В обработке</MudSelectItem>
+                                <MudSelectItem Value="@("Shipped")">Отправлен</MudSelectItem>
+                                <MudSelectItem Value="@("Delivered")">Доставлен</MudSelectItem>
+                                <MudSelectItem Value="@("Cancelled")">Отменён</MudSelectItem>
+                            </MudSelect>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudTabPanel>
+    </MudTabs>
 </MudContainer>
 
 @code {
     private List<OrderDto> orders = new();
+    private List<CategoryDto> categories = new();
+    private CategoryDto categoryForm = new();
+    private int? editingCategoryId;
     private bool isLoading = true;
+    private bool categoriesLoading = true;
+    private bool busy = false;
     private bool disposed = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -72,8 +156,111 @@
             catch { }
 
             isLoading = false;
+
+            try
+            {
+                categories = await CategoryService.GetAll();
+            }
+            catch { }
+
+            categoriesLoading = false;
+
             if (!disposed)
                 await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private string? ValidateCategoryName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "Название обязательно";
+
+        if (name.Length < 2)
+            return "Название должно содержать минимум 2 символа";
+
+        if (name.Length > 100)
+            return "Название слишком длинное (максимум 100 символов)";
+
+        return null;
+    }
+
+    private async Task SaveCategoryAsync()
+    {
+        if (disposed) return;
+
+        // Валидация перед отправкой
+        var nameError = ValidateCategoryName(categoryForm.Name);
+        if (nameError != null)
+        {
+            Snackbar.Add(nameError, Severity.Warning);
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            bool ok;
+            if (editingCategoryId == null)
+                ok = await CategoryService.Create(categoryForm);
+            else
+                ok = await CategoryService.Update(editingCategoryId.Value, categoryForm);
+
+            if (ok)
+            {
+                Snackbar.Add(editingCategoryId == null ? "Категория создана" : "Категория обновлена", Severity.Success);
+                CancelCategoryEdit();
+                categories = await CategoryService.GetAll();
+                if (!disposed)
+                    await InvokeAsync(StateHasChanged);
+            }
+            else
+                Snackbar.Add("Ошибка сохранения категории", Severity.Error);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void StartCategoryEdit(CategoryDto category)
+    {
+        editingCategoryId = category.Id;
+        categoryForm = new CategoryDto
+        {
+            Name = category.Name,
+            Description = category.Description
+        };
+        StateHasChanged();
+    }
+
+    private void CancelCategoryEdit()
+    {
+        editingCategoryId = null;
+        categoryForm = new CategoryDto();
+    }
+
+    private async Task DeleteCategoryAsync(int id)
+    {
+        if (disposed) return;
+        busy = true;
+        try
+        {
+            var ok = await CategoryService.Delete(id);
+            if (ok)
+            {
+                Snackbar.Add("Категория удалена", Severity.Info);
+                categories = await CategoryService.GetAll();
+                if (editingCategoryId == id)
+                    CancelCategoryEdit();
+                if (!disposed)
+                    await InvokeAsync(StateHasChanged);
+            }
+            else
+                Snackbar.Add("Нельзя удалить категорию (есть товары или нет прав)", Severity.Error);
+        }
+        finally
+        {
+            busy = false;
         }
     }
 

@@ -20,55 +20,40 @@ public class CategoriesController : ControllerBase
             {
                 Id = c.Id,
                 Name = c.Name,
-                Description = c.Description,
-                SellerId = c.SellerId
+                Description = c.Description
             }).ToListAsync();
 
         return Ok(categories);
     }
 
-    /// <summary>Категории для выбора в товаре: общие + свои у продавца; у админа — все.</summary>
+    /// <summary>Категории для выбора в товаре: все категории доступны продавцу.</summary>
     [HttpGet("available")]
     [Authorize(Roles = "Seller,Admin")]
     public async Task<IActionResult> GetAvailableForSeller()
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role = User.FindFirstValue(ClaimTypes.Role)!;
-
-        var query = _context.Categories.AsQueryable();
-        if (!string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
-            query = query.Where(c => c.SellerId == null || c.SellerId == userId);
-
-        var categories = await query
+        var categories = await _context.Categories
             .OrderBy(c => c.Name)
             .Select(c => new CategoryDto
             {
                 Id = c.Id,
                 Name = c.Name,
-                Description = c.Description,
-                SellerId = c.SellerId
+                Description = c.Description
             }).ToListAsync();
 
         return Ok(categories);
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin,Seller")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create(CategoryDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name))
             return BadRequest("Укажите название категории");
 
-        var role = User.FindFirstValue(ClaimTypes.Role)!;
-        int? sellerId = null;
-        if (string.Equals(role, "Seller", StringComparison.OrdinalIgnoreCase))
-            sellerId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
         var category = new Category
         {
             Name = dto.Name.Trim(),
-            Description = dto.Description?.Trim() ?? string.Empty,
-            SellerId = sellerId
+            Description = dto.Description?.Trim() ?? string.Empty
         };
 
         _context.Categories.Add(category);
@@ -77,20 +62,11 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin,Seller")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(int id, CategoryDto dto)
     {
         var category = await _context.Categories.FindAsync(id);
         if (category == null) return NotFound();
-
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role = User.FindFirstValue(ClaimTypes.Role)!;
-
-        if (string.Equals(role, "Seller", StringComparison.OrdinalIgnoreCase))
-        {
-            if (category.SellerId != userId)
-                return Forbid();
-        }
 
         if (string.IsNullOrWhiteSpace(dto.Name))
             return BadRequest("Укажите название категории");
@@ -103,20 +79,11 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin,Seller")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var category = await _context.Categories.FindAsync(id);
         if (category == null) return NotFound();
-
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role = User.FindFirstValue(ClaimTypes.Role)!;
-
-        if (string.Equals(role, "Seller", StringComparison.OrdinalIgnoreCase))
-        {
-            if (category.SellerId != userId)
-                return Forbid();
-        }
 
         var hasProducts = await _context.Products.AnyAsync(p => p.CategoryId == id);
         if (hasProducts)

@@ -25,6 +25,15 @@ public class OrdersController : ControllerBase
         if (!cartItems.Any())
             return BadRequest("Корзина пуста");
 
+        // Проверяем наличие товаров на складе
+        foreach (var item in cartItems)
+        {
+            if (item.Quantity > item.Product.Stock)
+            {
+                return BadRequest($"Недостаточно товара '{item.Product.Name}' на складе. Доступно: {item.Product.Stock} шт.");
+            }
+        }
+
         var order = new Order
         {
             UserId = userId,
@@ -37,6 +46,12 @@ public class OrdersController : ControllerBase
                 Price = c.Product.Price
             }).ToList()
         };
+
+        // Уменьшаем Stock товаров
+        foreach (var item in cartItems)
+        {
+            item.Product.Stock -= item.Quantity;
+        }
 
         _context.Orders.Add(order);
         _context.CartItems.RemoveRange(cartItems);
