@@ -8,11 +8,13 @@ public class AuthController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly TokenService _tokenService;
+    private readonly EmailService _emailService;
 
-    public AuthController(AppDbContext context, TokenService tokenService)
+    public AuthController(AppDbContext context, TokenService tokenService, EmailService emailService)
     {
         _context = context;
         _tokenService = tokenService;
+        _emailService = emailService;
     }
 
     [HttpPost("register")]
@@ -35,6 +37,9 @@ public class AuthController : ControllerBase
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
+
+        // Отправляем письмо в фоне — не блокируем ответ
+        _ = _emailService.SendWelcomeEmailAsync(user.Email, user.Role);
 
         var token = _tokenService.GenerateToken(user);
         var profile = TokenService.GetProfileDisplay(user);

@@ -1,0 +1,214 @@
+@page "/profile"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@using OnlineShop.Web.Services
+@using OnlineShop.Domain.DTOs
+@using MudBlazor
+@inject UserService UserService
+@inject AuthenticationStateProvider AuthStateProvider
+@attribute [Authorize]
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudText Typo="Typo.h5" Style="font-weight:700;" Class="mb-4">Профиль</MudText>
+
+    @if (isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (profile != null)
+    {
+        <MudPaper Elevation="2" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-3">Информация</MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.body2" Style="color:#666;">Email:</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="8">
+                    <MudText Typo="Typo.body1" Style="font-weight:600;">@profile.Email</MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.body2" Style="color:#666;">Роль:</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="8">
+                    <MudChip T="string" Color="@GetRoleColor(profile.Role)" Size="Size.Small">
+                        @GetRoleText(profile.Role)
+                    </MudChip>
+                </MudItem>
+
+                @if (!string.IsNullOrEmpty(profile.SellerDisplayName))
+                {
+                    <MudItem xs="12" sm="4">
+                        <MudText Typo="Typo.body2" Style="color:#666;">Имя продавца:</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="8">
+                        <MudText Typo="Typo.body1" Style="font-weight:600;">@profile.SellerDisplayName</MudText>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
+
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-3">Изменить пароль</MudText>
+
+            @if (!string.IsNullOrEmpty(passwordError))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">@passwordError</MudAlert>
+            }
+
+            @if (passwordChanged)
+            {
+                <MudAlert Severity="Severity.Success" Class="mb-3">Пароль успешно изменён</MudAlert>
+            }
+
+            <MudTextField @bind-Value="currentPassword"
+                          Label="Текущий пароль"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          Required="true"
+                          Class="mb-3" />
+
+            <MudTextField @bind-Value="newPassword"
+                          Label="Новый пароль"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          Required="true"
+                          HelperText="Минимум 6 символов"
+                          Validation="@(new Func<string, string?>(ValidatePassword))"
+                          Class="mb-3" />
+
+            <MudTextField @bind-Value="confirmPassword"
+                          Label="Подтвердите новый пароль"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          Required="true"
+                          Validation="@(new Func<string, string?>(ValidateConfirmPassword))"
+                          Class="mb-4" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="HandleChangePassword"
+                       Disabled="isChangingPassword">
+                @if (isChangingPassword)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                }
+                else
+                {
+                    <text>Изменить пароль</text>
+                }
+            </MudButton>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private UserProfileDto? profile;
+    private bool isLoading = true;
+    private bool isChangingPassword = false;
+    private bool passwordChanged = false;
+    private string passwordError = string.Empty;
+
+    private string currentPassword = string.Empty;
+    private string newPassword = string.Empty;
+    private string confirmPassword = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            profile = await UserService.GetProfile();
+        }
+        catch { }
+        isLoading = false;
+    }
+
+    private string? ValidatePassword(string password)
+    {
+        if (string.IsNullOrWhiteSpace(password))
+            return "Пароль обязателен";
+
+        if (password.Length < 6)
+            return "Пароль должен содержать минимум 6 символов";
+
+        return null;
+    }
+
+    private string? ValidateConfirmPassword(string password)
+    {
+        if (string.IsNullOrWhiteSpace(password))
+            return "Подтверждение пароля обязательно";
+
+        if (password != newPassword)
+            return "Пароли не совпадают";
+
+        return null;
+    }
+
+    private async Task HandleChangePassword()
+    {
+        passwordError = string.Empty;
+        passwordChanged = false;
+
+        // Валидация
+        if (string.IsNullOrWhiteSpace(currentPassword) || string.IsNullOrWhiteSpace(newPassword) || string.IsNullOrWhiteSpace(confirmPassword))
+        {
+            passwordError = "Заполните все поля";
+            return;
+        }
+
+        var passwordValidation = ValidatePassword(newPassword);
+        if (passwordValidation != null)
+        {
+            passwordError = passwordValidation;
+            return;
+        }
+
+        if (newPassword != confirmPassword)
+        {
+            passwordError = "Пароли не совпадают";
+            return;
+        }
+
+        isChangingPassword = true;
+
+        var (success, error) = await UserService.ChangePassword(new ChangePasswordDto
+        {
+            CurrentPassword = currentPassword,
+            NewPassword = newPassword
+        });
+
+        isChangingPassword = false;
+
+        if (success)
+        {
+            passwordChanged = true;
+            currentPassword = string.Empty;
+            newPassword = string.Empty;
+            confirmPassword = string.Empty;
+        }
+        else
+        {
+            passwordError = error ?? "Ошибка при смене пароля";
+        }
+
+        StateHasChanged();
+    }
+
+    private Color GetRoleColor(string role) => role switch
+    {
+        "Admin" => Color.Error,
+        "Seller" => Color.Primary,
+        "Buyer" => Color.Success,
+        _ => Color.Default
+    };
+
+    private string GetRoleText(string role) => role switch
+    {
+        "Admin" => "Администратор",
+        "Seller" => "Продавец",
+        "Buyer" => "Покупатель",
+        _ => role
+    };
+}

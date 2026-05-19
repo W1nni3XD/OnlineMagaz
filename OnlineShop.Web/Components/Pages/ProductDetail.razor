@@ -4,6 +4,7 @@
 @using OnlineShop.Domain.DTOs
 @inject ProductService ProductService
 @inject CartService CartService
+@inject WishlistService WishlistService
 @inject CartSidebarState CartSidebarState
 @inject NavigationManager Navigation
 @implements IDisposable
@@ -88,6 +89,15 @@
                 </MudButton>
 
                 <MudButton Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           StartIcon="@(isInWishlist ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                           Size="Size.Large"
+                           Class="mt-4 ml-3"
+                           OnClick="ToggleWishlist">
+                    @(isInWishlist ? "В избранном" : "В избранное")
+                </MudButton>
+
+                <MudButton Variant="Variant.Outlined"
                            Color="Color.Primary"
                            Class="mt-4 ml-3"
                            OnClick='() => Navigation.NavigateTo("/catalog")'>
@@ -98,6 +108,12 @@
                 {
                     <MudAlert Severity="Severity.Success" Class="mt-3">
                         Товар добавлен в корзину!
+                    </MudAlert>
+                }
+                @if (showWishlistMessage)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mt-3">
+                        @wishlistMessage
                     </MudAlert>
                 }
             </MudItem>
@@ -112,6 +128,9 @@
     private ProductDto? product;
     private bool isLoading = true;
     private bool showSuccess = false;
+    private bool showWishlistMessage = false;
+    private string wishlistMessage = string.Empty;
+    private bool isInWishlist = false;
     private int quantity = 1;
     private bool disposed = false;
 
@@ -122,6 +141,14 @@
             try
             {
                 product = await ProductService.GetById(Id);
+
+                // Проверяем есть ли товар в избранном
+                try
+                {
+                    var wishlist = await WishlistService.GetWishlist();
+                    isInWishlist = wishlist.Any(w => w.ProductId == Id);
+                }
+                catch { }
             }
             catch { }
 
@@ -143,6 +170,33 @@
         {
             showSuccess = true;
             CartSidebarState.Open();
+        }
+        if (!disposed)
+            await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleWishlist()
+    {
+        if (disposed) return;
+        if (isInWishlist)
+        {
+            var ok = await WishlistService.RemoveByProductId(Id);
+            if (ok)
+            {
+                isInWishlist = false;
+                wishlistMessage = "Товар убран из избранного";
+                showWishlistMessage = true;
+            }
+        }
+        else
+        {
+            var (success, error) = await WishlistService.AddToWishlist(Id);
+            if (success)
+            {
+                isInWishlist = true;
+                wishlistMessage = "Товар добавлен в избранное!";
+                showWishlistMessage = true;
+            }
         }
         if (!disposed)
             await InvokeAsync(StateHasChanged);

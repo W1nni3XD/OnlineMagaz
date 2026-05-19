@@ -15,23 +15,28 @@ namespace OnlineShop.API.Migrations
                 """
                 SELECT setval(
                     pg_get_serial_sequence('public."Products"', 'Id'),
-                    COALESCE((SELECT MAX("Id") FROM public."Products"), 0)
+                    GREATEST(COALESCE((SELECT MAX("Id") FROM public."Products"), 0), 1),
+                    false
                 );
                 SELECT setval(
                     pg_get_serial_sequence('public."Users"', 'Id'),
-                    COALESCE((SELECT MAX("Id") FROM public."Users"), 0)
+                    GREATEST(COALESCE((SELECT MAX("Id") FROM public."Users"), 0), 1),
+                    false
                 );
                 SELECT setval(
                     pg_get_serial_sequence('public."Orders"', 'Id'),
-                    COALESCE((SELECT MAX("Id") FROM public."Orders"), 0)
+                    GREATEST(COALESCE((SELECT MAX("Id") FROM public."Orders"), 0), 1),
+                    false
                 );
                 SELECT setval(
                     pg_get_serial_sequence('public."OrderItems"', 'Id'),
-                    COALESCE((SELECT MAX("Id") FROM public."OrderItems"), 0)
+                    GREATEST(COALESCE((SELECT MAX("Id") FROM public."OrderItems"), 0), 1),
+                    false
                 );
                 SELECT setval(
                     pg_get_serial_sequence('public."CartItems"', 'Id'),
-                    COALESCE((SELECT MAX("Id") FROM public."CartItems"), 0)
+                    GREATEST(COALESCE((SELECT MAX("Id") FROM public."CartItems"), 0), 1),
+                    false
                 );
                 """);
         }

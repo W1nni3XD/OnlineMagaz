@@ -26,16 +26,28 @@ public class ProductService
         return client;
     }
 
-    public async Task<List<ProductDto>> GetAll(int? categoryId = null, string? search = null)
+    public async Task<PaginatedProductsDto> GetAll(
+        int? categoryId = null,
+        string? search = null,
+        decimal? minPrice = null,
+        decimal? maxPrice = null,
+        bool? inStock = null,
+        int page = 1,
+        int pageSize = 12)
     {
         var client = await GetClient();
         var url = "api/products";
         var query = new List<string>();
         if (categoryId.HasValue) query.Add($"categoryId={categoryId}");
-        if (!string.IsNullOrEmpty(search)) query.Add($"search={search}");
+        if (!string.IsNullOrEmpty(search)) query.Add($"search={Uri.EscapeDataString(search)}");
+        if (minPrice.HasValue) query.Add($"minPrice={minPrice}");
+        if (maxPrice.HasValue) query.Add($"maxPrice={maxPrice}");
+        if (inStock.HasValue) query.Add($"inStock={inStock.Value.ToString().ToLower()}");
+        query.Add($"page={page}");
+        query.Add($"pageSize={pageSize}");
         if (query.Any()) url += "?" + string.Join("&", query);
-        var result = await client.GetFromJsonAsync<List<ProductDto>>(url);
-        return result ?? new List<ProductDto>();
+        var result = await client.GetFromJsonAsync<PaginatedProductsDto>(url);
+        return result ?? new PaginatedProductsDto();
     }
 
     public async Task<ProductDto?> GetById(int id)

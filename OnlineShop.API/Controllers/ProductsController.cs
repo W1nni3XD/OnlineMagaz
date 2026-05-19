@@ -12,7 +12,14 @@ public class ProductsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? categoryId, [FromQuery] string? search)
+    public async Task<IActionResult> GetAll(
+        [FromQuery] int? categoryId,
+        [FromQuery] string? search,
+        [FromQuery] decimal? minPrice,
+        [FromQuery] decimal? maxPrice,
+        [FromQuery] bool? inStock,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 12)
     {
         var query = _context.Products
             .Include(p => p.Category)
@@ -23,23 +30,46 @@ public class ProductsController : ControllerBase
             query = query.Where(p => p.CategoryId == categoryId.Value);
 
         if (!string.IsNullOrEmpty(search))
-            query = query.Where(p => p.Name.ToLower().Contains(search.ToLower()));
+            query = query.Where(p => p.Name.ToLower().Contains(search.ToLower())
+                                  || p.Description.ToLower().Contains(search.ToLower()));
 
-        var products = await query.Select(p => new ProductDto
+        if (minPrice.HasValue)
+            query = query.Where(p => p.Price >= minPrice.Value);
+
+        if (maxPrice.HasValue)
+            query = query.Where(p => p.Price <= maxPrice.Value);
+
+        if (inStock.HasValue && inStock.Value)
+            query = query.Where(p => p.Stock > 0);
+
+        var totalCount = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        var products = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(p => new ProductDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Price = p.Price,
+                Stock = p.Stock,
+                ImageUrl = p.ImageUrl,
+                CategoryId = p.CategoryId,
+                CategoryName = p.Category.Name,
+                SellerId = p.SellerId,
+                SellerEmail = p.Seller.Email
+            }).ToListAsync();
+
+        return Ok(new
         {
-            Id = p.Id,
-            Name = p.Name,
-            Description = p.Description,
-            Price = p.Price,
-            Stock = p.Stock,
-            ImageUrl = p.ImageUrl,
-            CategoryId = p.CategoryId,
-            CategoryName = p.Category.Name,
-            SellerId = p.SellerId,
-            SellerEmail = p.Seller.Email
-        }).ToListAsync();
-
-        return Ok(products);
+            Products = products,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            CurrentPage = page,
+            PageSize = pageSize
+        });
     }
 
     /// <summary>Товары текущего продавца (по JWT). Админ видит все товары.</summary>

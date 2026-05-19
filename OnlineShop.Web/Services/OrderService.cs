@@ -20,11 +20,18 @@ public class OrderService
         return client;
     }
 
-    public async Task<bool> CreateOrder()
+    public async Task<(bool success, string? error)> CreateOrder()
     {
         var client = await GetClient();
         var response = await client.PostAsync("api/orders", null);
-        return response.IsSuccessStatusCode;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            return (false, string.IsNullOrWhiteSpace(errorMessage) ? "Ошибка при создании заказа" : errorMessage);
+        }
+
+        return (true, null);
     }
 
     public async Task<List<OrderDto>> GetMyOrders()

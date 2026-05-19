@@ -69,6 +69,13 @@
                 Итого: @cartItems.Sum(x => x.ProductPrice * x.Quantity).ToString("C")
             </MudText>
 
+            @if (!string.IsNullOrEmpty(orderError))
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-3">
+                    @orderError
+                </MudAlert>
+            }
+
             @if (orderPlaced)
             {
                 <MudAlert Severity="Severity.Success" Class="mt-3">
@@ -100,6 +107,7 @@
     private List<CartItemDto> cartItems = new();
     private bool isLoading = true;
     private bool orderPlaced = false;
+    private string orderError = string.Empty;
     private bool disposed = false;
 
     protected override async Task OnParametersSetAsync()
@@ -155,11 +163,20 @@
     private async Task PlaceOrder()
     {
         if (disposed) return;
-        var result = await OrderService.CreateOrder();
-        if (result)
+
+        orderError = string.Empty;
+        var (success, error) = await OrderService.CreateOrder();
+
+        if (success)
         {
             orderPlaced = true;
             cartItems.Clear();
+            if (!disposed)
+                await InvokeAsync(StateHasChanged);
+        }
+        else
+        {
+            orderError = error ?? "Ошибка при создании заказа";
             if (!disposed)
                 await InvokeAsync(StateHasChanged);
         }

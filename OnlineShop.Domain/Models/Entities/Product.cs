@@ -17,4 +17,6 @@ public class Product
 
     public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     public ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
+
+    public byte[] RowVersion { get; set; } = null!;
 }

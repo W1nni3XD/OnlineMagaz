@@ -5,6 +5,7 @@
 @inject ProductService ProductService
 @inject CategoryService CategoryService
 @inject CartService CartService
+@inject WishlistService WishlistService
 @inject CartSidebarState CartSidebarState
 @inject NavigationManager Navigation
 @implements IDisposable
@@ -12,7 +13,7 @@
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
 
     <MudGrid Class="mb-4">
-        <MudItem xs="12" sm="6" md="4">
+        <MudItem xs="12" sm="6" md="3">
             <MudTextField @bind-Value="searchQuery"
                           Label="Поиск товаров"
                           Variant="Variant.Outlined"
@@ -20,7 +21,7 @@
                           AdornmentIcon="@Icons.Material.Filled.Search"
                           @onkeyup="HandleSearch" />
         </MudItem>
-        <MudItem xs="12" sm="6" md="4">
+        <MudItem xs="12" sm="6" md="3">
             <MudSelect @bind-Value="selectedCategory"
                        Label="Категория"
                        Variant="Variant.Outlined"
@@ -31,6 +32,28 @@
                     <MudSelectItem Value="@cat.Id">@cat.Name</MudSelectItem>
                 }
             </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudNumericField @bind-Value="minPrice"
+                             Label="Цена от"
+                             Variant="Variant.Outlined"
+                             Min="0"
+                             Format="N0"
+                             @bind-Value:after="LoadProducts" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudNumericField @bind-Value="maxPrice"
+                             Label="Цена до"
+                             Variant="Variant.Outlined"
+                             Min="0"
+                             Format="N0"
+                             @bind-Value:after="LoadProducts" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudCheckBox @bind-Value="onlyInStock"
+                         Label="Только в наличии"
+                         Color="Color.Primary"
+                         @bind-Value:after="LoadProducts" />
         </MudItem>
     </MudGrid>
 
@@ -48,7 +71,16 @@
             @foreach (var product in products)
             {
                 <MudItem xs="12" sm="6" md="3">
-                    <MudCard Elevation="2" Style="border-radius: 12px; height: 100%;">
+                    <MudCard Elevation="2" Style="border-radius: 12px; height: 100%; position: relative;">
+
+                        <!-- Кнопка избранного -->
+                        <MudIconButton Icon="@(wishlistIds.Contains(product.Id) ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                                       Color="@(wishlistIds.Contains(product.Id) ? Color.Error : Color.Default)"
+                                       Size="Size.Small"
+                                       Style="position: absolute; top: 8px; right: 8px; z-index: 1; background: white; border-radius: 50%;"
+                                       OnClick="() => ToggleWishlist(product.Id)"
+                                       Title="@(wishlistIds.Contains(product.Id) ? "Убрать из избранного" : "В избранное")" />
+
                         @if (!string.IsNullOrEmpty(product.ImageUrl))
                         {
                             <MudCardMedia Image="@product.ImageUrl" Height="200" />
@@ -83,6 +115,14 @@
                 </MudItem>
             }
         </MudGrid>
+
+        <MudPagination Class="mt-4"
+                       Count="@totalPages"
+                       Selected="@currentPage"
+                       SelectedChanged="@OnPageChanged"
+                       Color="Color.Primary"
+                       ShowFirstButton="true"
+                       ShowLastButton="true" />
     }
 </MudContainer>
 
@@ -92,8 +132,15 @@
 
     private List<ProductDto> products = new();
     private List<CategoryDto> categories = new();
+    private HashSet<int> wishlistIds = new();
     private string searchQuery = string.Empty;
     private int selectedCategory = 0;
+    private decimal? minPrice = null;
+    private decimal? maxPrice = null;
+    private bool onlyInStock = false;
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private int pageSize = 12;
     private bool isLoading = true;
     private bool initialized = false;
     private bool disposed = false;
@@ -108,10 +155,19 @@
                 categories = await CategoryService.GetAll();
                 if (CategoryId.HasValue)
                     selectedCategory = CategoryId.Value;
+
                 await LoadProducts();
+
+                // Загружаем избранное (если не авторизован — просто пустой список)
+                try
+                {
+                    var wishlist = await WishlistService.GetWishlist();
+                    wishlistIds = wishlist.Select(w => w.ProductId).ToHashSet();
+                }
+                catch { }
             }
             catch { }
-            
+
             if (!disposed)
                 await InvokeAsync(StateHasChanged);
         }
@@ -121,11 +177,44 @@
     {
         if (disposed) return;
         isLoading = true;
-        products = await ProductService.GetAll(
+        var result = await ProductService.GetAll(
             selectedCategory == 0 ? null : selectedCategory,
-            string.IsNullOrEmpty(searchQuery) ? null : searchQuery
+            string.IsNullOrEmpty(searchQuery) ? null : searchQuery,
+            minPrice,
+            maxPrice,
+            onlyInStock ? true : null,
+            currentPage,
+            pageSize
         );
+        products = result.Products;
+        totalPages = result.TotalPages;
         isLoading = false;
+    }
+
+    private async Task ToggleWishlist(int productId)
+    {
+        if (disposed) return;
+        if (wishlistIds.Contains(productId))
+        {
+            await WishlistService.RemoveByProductId(productId);
+            wishlistIds.Remove(productId);
+        }
+        else
+        {
+            var (success, _) = await WishlistService.AddToWishlist(productId);
+            if (success)
+                wishlistIds.Add(productId);
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        if (disposed) return;
+        currentPage = page;
+        await LoadProducts();
+        if (!disposed)
+            await InvokeAsync(StateHasChanged);
     }
 
     private async Task HandleSearch()

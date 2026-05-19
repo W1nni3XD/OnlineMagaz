@@ -25,7 +25,7 @@ public class OrdersController : ControllerBase
         if (!cartItems.Any())
             return BadRequest("Корзина пуста");
 
-        // Проверяем наличие товаров на складе
+        // Проверка наличие товаров на складе
         foreach (var item in cartItems)
         {
             if (item.Quantity > item.Product.Stock)
@@ -47,7 +47,7 @@ public class OrdersController : ControllerBase
             }).ToList()
         };
 
-        // Уменьшаем Stock товаров
+        // Уменьшение stockk товаров
         foreach (var item in cartItems)
         {
             item.Product.Stock -= item.Quantity;
@@ -55,7 +55,16 @@ public class OrdersController : ControllerBase
 
         _context.Orders.Add(order);
         _context.CartItems.RemoveRange(cartItems);
-        await _context.SaveChangesAsync();
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            
+            return BadRequest("Остатки товара изменились. Пожалуйста, обновите корзину и попробуйте снова.");
+        }
 
         return Ok(order.Id);
     }

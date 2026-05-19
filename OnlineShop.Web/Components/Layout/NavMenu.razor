@@ -11,12 +11,20 @@
 
     <AuthorizeView>
         <Authorized>
+            <MudNavLink Href="profile" Icon="@Icons.Material.Filled.Person">
+                Профиль
+            </MudNavLink>
             <MudNavLink Href="cart" Icon="@Icons.Material.Filled.ShoppingCart">
                 Корзина
             </MudNavLink>
             <MudNavLink Href="orders" Icon="@Icons.Material.Filled.ListAlt">
                 Мои заказы
             </MudNavLink>
+            <AuthorizeView Roles="Buyer" Context="buyerAuth">
+                <MudNavLink Href="wishlist" Icon="@Icons.Material.Filled.Favorite">
+                    Избранное
+                </MudNavLink>
+            </AuthorizeView>
             <AuthorizeView Roles="Seller" Context="sellerAuth">
                 <MudNavLink Href="seller" Icon="@Icons.Material.Filled.Inventory">
                     Мои товары

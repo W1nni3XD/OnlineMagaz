@@ -14,7 +14,8 @@ namespace OnlineShop.API.Migrations
             migrationBuilder.Sql("""
                 SELECT setval(
                     pg_get_serial_sequence('public."Categories"', 'Id'),
-                    COALESCE((SELECT MAX("Id") FROM public."Categories"), 0)
+                    GREATEST(COALESCE((SELECT MAX("Id") FROM public."Categories"), 0), 1),
+                    false
                 );
                 """);
         }

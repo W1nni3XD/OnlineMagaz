@@ -18,6 +18,8 @@ builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<CartSidebarState>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<CategoryService>();
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<WishlistService>();
 
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 builder.Services.AddAuthorizationCore();
