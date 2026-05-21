@@ -1,4 +1,4 @@
-﻿using OnlineShop.API.Services;
+﻿using System.IdentityModel.Tokens.Jwt;
 
 namespace OnlineShop.API.Controllers;
 
@@ -38,18 +38,17 @@ public class AuthController : ControllerBase
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        // Отправляем письмо в фоне — не блокируем ответ
-        _ = _emailService.SendWelcomeEmailAsync(user.Email, user.Role);
+        // ждём отправку письма 
+        _ = Task.Run(() => _emailService.SendWelcomeEmailAsync(user.Email, user.Role));
 
         var token = _tokenService.GenerateToken(user);
-        var profile = TokenService.GetProfileDisplay(user);
 
         return Ok(new AuthResponseDto
         {
             Token = token,
             Email = user.Email,
             Role = user.Role,
-            ProfileDisplay = profile
+            ProfileDisplay = TokenService.GetProfileDisplay(user)
         });
     }
 
@@ -70,5 +69,35 @@ public class AuthController : ControllerBase
             Role = user.Role,
             ProfileDisplay = TokenService.GetProfileDisplay(user)
         });
+    }
+
+    [HttpPost("logout")]
+    [Authorize]
+    public async Task<IActionResult> Logout()
+    {
+        var authHeader = Request.Headers["Authorization"].ToString();
+        var tokenStr = authHeader.Replace("Bearer ", "");
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwtToken = handler.ReadJwtToken(tokenStr);
+
+        var jti = jwtToken.Id;
+        var exp = jwtToken.ValidTo;
+
+        // записываем токен в блеклист
+        _context.RevokedTokens.Add(new RevokedToken
+        {
+            Jti = jti,
+            ExpiresAt = exp
+        });
+        await _context.SaveChangesAsync();
+
+        // чистим старые истёкшие токены из бд (раз в логаут)
+        var now = DateTime.UtcNow;
+        var expired = _context.RevokedTokens.Where(r => r.ExpiresAt < now);
+        _context.RevokedTokens.RemoveRange(expired);
+        await _context.SaveChangesAsync();
+
+        return Ok();
     }
 }

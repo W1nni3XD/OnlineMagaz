@@ -57,6 +57,20 @@ public class AuthService
 
     public async Task RemoveToken()
     {
+        // сначала отзываем токен на сервере (блеклист)
+        try
+        {
+            var token = await GetToken();
+            if (!string.IsNullOrEmpty(token))
+            {
+                var client = _httpClientFactory.CreateClient("API");
+                client.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                await client.PostAsync("api/auth/logout", null);
+            }
+        }
+        catch { /* если API недоступен — всё равно чистим локально */ }
+
         await _js.InvokeVoidAsync("localStorage.removeItem", "token");
     }
 }

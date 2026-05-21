@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
     public DbSet<OrderItem> OrderItems { get; set; }
     public DbSet<CartItem> CartItems { get; set; }
     public DbSet<WishlistItem> WishlistItems { get; set; }
+    public DbSet<RevokedToken> RevokedTokens { get; set; } // новенькое
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -83,5 +84,10 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(w => w.ProductId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // индекс для быстрого поиска по jti
+        modelBuilder.Entity<RevokedToken>()
+            .HasIndex(r => r.Jti)
+            .IsUnique();
     }
 }

@@ -1,7 +1,5 @@
 ﻿using Microsoft.IdentityModel.Tokens;
-using OnlineShop.Domain.Models.Entities;
 using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using System.Text;
 
 namespace OnlineShop.API.Services;
@@ -29,8 +27,11 @@ public class TokenService
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+        var jti = Guid.NewGuid().ToString(); // уникальный id токена для блеклиста
+
         var claims = new List<Claim>
         {
+            new Claim(JwtRegisteredClaimNames.Jti, jti), // новое
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role),

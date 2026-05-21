@@ -4,6 +4,7 @@
 @using OnlineShop.Domain.DTOs
 @inject OrderService OrderService
 @inject CategoryService CategoryService
+@inject UserService UserService
 @inject ISnackbar Snackbar
 @implements IDisposable
 
@@ -11,6 +12,8 @@
     <MudText Typo="Typo.h5" Style="font-weight:700;" Class="mb-4">Админ панель</MudText>
 
     <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+
+        <!-- ВКЛАДКА КАТЕГОРИИ -->
         <MudTabPanel Text="Категории">
             <MudPaper Elevation="2" Class="pa-4 mb-4">
                 <MudText Typo="Typo.subtitle1" Class="mb-3">
@@ -84,6 +87,7 @@
             }
         </MudTabPanel>
 
+        <!-- ВКЛАДКА ЗАКАЗЫ -->
         <MudTabPanel Text="Заказы">
             @if (isLoading)
             {
@@ -132,104 +136,144 @@
                 </MudTable>
             }
         </MudTabPanel>
+
+        <!-- ВКЛАДКА ПОЛЬЗОВАТЕЛИ -->
+        <MudTabPanel Text="Пользователи">
+            @if (usersLoading)
+            {
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            }
+            else if (!users.Any())
+            {
+                <MudAlert Severity="Severity.Info">Пользователей нет</MudAlert>
+            }
+            else
+            {
+                <MudTable Items="users" Hover="true" Striped="true" Elevation="2"
+                          Filter="FilterUsers">
+                    <ToolBarContent>
+                        <MudTextField @bind-Value="userSearch"
+                                      Placeholder="Поиск по email"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      IconSize="Size.Medium"
+                                      Class="mt-0" />
+                    </ToolBarContent>
+                    <HeaderContent>
+                        <MudTh>ID</MudTh>
+                        <MudTh>Email</MudTh>
+                        <MudTh>Роль</MudTh>
+                        <MudTh>Имя продавца</MudTh>
+                        <MudTh>Дата регистрации</MudTh>
+                        <MudTh>Действия</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Id</MudTd>
+                        <MudTd>@context.Email</MudTd>
+                        <MudTd>
+                            <MudChip T="string" Color="@GetRoleColor(context.Role)" Size="Size.Small">
+                                @GetRoleText(context.Role)
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>@(context.DisplayName ?? "—")</MudTd>
+                        <MudTd>@context.CreatedAt.ToString("dd.MM.yyyy")</MudTd>
+                        <MudTd>
+                            <MudSelect T="string"
+                                       Value="@context.Role"
+                                       ValueChanged="@(async (string r) => await ChangeUserRole(context.Id, r))"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Style="min-width:130px;">
+                                <MudSelectItem Value="@("Buyer")">Покупатель</MudSelectItem>
+                                <MudSelectItem Value="@("Seller")">Продавец</MudSelectItem>
+                                <MudSelectItem Value="@("Admin")">Админ</MudSelectItem>
+                            </MudSelect>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudTabPanel>
+
     </MudTabs>
 </MudContainer>
 
 @code {
+    // Заказы
     private List<OrderDto> orders = new();
+    private bool isLoading = true;
+
+    // Категории
     private List<CategoryDto> categories = new();
     private CategoryDto categoryForm = new();
     private int? editingCategoryId;
-    private bool isLoading = true;
     private bool categoriesLoading = true;
     private bool busy = false;
+
+    // Пользователи
+    private List<UserAdminDto> users = new();
+    private bool usersLoading = true;
+    private string userSearch = string.Empty;
+
     private bool disposed = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && !disposed)
         {
-            try
-            {
-                orders = await OrderService.GetAllOrders();
-            }
-            catch { }
-
+            try { orders = await OrderService.GetAllOrders(); } catch { }
             isLoading = false;
 
-            try
-            {
-                categories = await CategoryService.GetAll();
-            }
-            catch { }
-
+            try { categories = await CategoryService.GetAll(); } catch { }
             categoriesLoading = false;
+
+            try { users = await UserService.GetAllUsers(); } catch { }
+            usersLoading = false;
 
             if (!disposed)
                 await InvokeAsync(StateHasChanged);
         }
     }
 
+    //Категории 
+
     private string? ValidateCategoryName(string name)
     {
-        if (string.IsNullOrWhiteSpace(name))
-            return "Название обязательно";
-
-        if (name.Length < 2)
-            return "Название должно содержать минимум 2 символа";
-
-        if (name.Length > 100)
-            return "Название слишком длинное (максимум 100 символов)";
-
+        if (string.IsNullOrWhiteSpace(name)) return "Название обязательно";
+        if (name.Length < 2) return "Минимум 2 символа";
+        if (name.Length > 100) return "Максимум 100 символов";
         return null;
     }
 
     private async Task SaveCategoryAsync()
     {
         if (disposed) return;
-
-        // Валидация перед отправкой
         var nameError = ValidateCategoryName(categoryForm.Name);
-        if (nameError != null)
-        {
-            Snackbar.Add(nameError, Severity.Warning);
-            return;
-        }
+        if (nameError != null) { Snackbar.Add(nameError, Severity.Warning); return; }
 
         busy = true;
         try
         {
-            bool ok;
-            if (editingCategoryId == null)
-                ok = await CategoryService.Create(categoryForm);
-            else
-                ok = await CategoryService.Update(editingCategoryId.Value, categoryForm);
+            bool ok = editingCategoryId == null
+                ? await CategoryService.Create(categoryForm)
+                : await CategoryService.Update(editingCategoryId.Value, categoryForm);
 
             if (ok)
             {
                 Snackbar.Add(editingCategoryId == null ? "Категория создана" : "Категория обновлена", Severity.Success);
                 CancelCategoryEdit();
                 categories = await CategoryService.GetAll();
-                if (!disposed)
-                    await InvokeAsync(StateHasChanged);
+                if (!disposed) await InvokeAsync(StateHasChanged);
             }
             else
                 Snackbar.Add("Ошибка сохранения категории", Severity.Error);
         }
-        finally
-        {
-            busy = false;
-        }
+        finally { busy = false; }
     }
 
     private void StartCategoryEdit(CategoryDto category)
     {
         editingCategoryId = category.Id;
-        categoryForm = new CategoryDto
-        {
-            Name = category.Name,
-            Description = category.Description
-        };
+        categoryForm = new CategoryDto { Name = category.Name, Description = category.Description };
         StateHasChanged();
     }
 
@@ -250,31 +294,23 @@
             {
                 Snackbar.Add("Категория удалена", Severity.Info);
                 categories = await CategoryService.GetAll();
-                if (editingCategoryId == id)
-                    CancelCategoryEdit();
-                if (!disposed)
-                    await InvokeAsync(StateHasChanged);
+                if (editingCategoryId == id) CancelCategoryEdit();
+                if (!disposed) await InvokeAsync(StateHasChanged);
             }
             else
                 Snackbar.Add("Нельзя удалить категорию (есть товары или нет прав)", Severity.Error);
         }
-        finally
-        {
-            busy = false;
-        }
+        finally { busy = false; }
     }
+
+    // Заказы
 
     private async Task ChangeStatus(int orderId, string status)
     {
         if (disposed) return;
         await OrderService.UpdateStatus(orderId, new UpdateOrderStatusDto { Status = status });
-        try
-        {
-            orders = await OrderService.GetAllOrders();
-        }
-        catch { }
-        if (!disposed)
-            await InvokeAsync(StateHasChanged);
+        try { orders = await OrderService.GetAllOrders(); } catch { }
+        if (!disposed) await InvokeAsync(StateHasChanged);
     }
 
     private Color GetStatusColor(string status) => status switch
@@ -297,8 +333,40 @@
         _ => status
     };
 
-    public void Dispose()
+    //Пользователи
+
+    private bool FilterUsers(UserAdminDto u) =>
+        string.IsNullOrEmpty(userSearch) ||
+        u.Email.Contains(userSearch, StringComparison.OrdinalIgnoreCase);
+
+    private async Task ChangeUserRole(int userId, string newRole)
     {
-        disposed = true;
+        if (disposed) return;
+        var ok = await UserService.ChangeRole(userId, newRole);
+        if (ok)
+        {
+            Snackbar.Add("Роль изменена", Severity.Success);
+            users = await UserService.GetAllUsers();
+            if (!disposed) await InvokeAsync(StateHasChanged);
+        }
+        else
+            Snackbar.Add("Ошибка изменения роли", Severity.Error);
     }
+
+    private Color GetRoleColor(string role) => role switch
+    {
+        "Admin" => Color.Error,
+        "Seller" => Color.Warning,
+        _ => Color.Default
+    };
+
+    private string GetRoleText(string role) => role switch
+    {
+        "Admin" => "Админ",
+        "Seller" => "Продавец",
+        "Buyer" => "Покупатель",
+        _ => role
+    };
+
+    public void Dispose() => disposed = true;
 }

@@ -1,6 +1,3 @@
-using System.Net.Http.Json;
-using OnlineShop.Domain.DTOs;
-
 namespace OnlineShop.Web.Services;
 
 public class WishlistService
@@ -18,43 +15,67 @@ public class WishlistService
     {
         var client = _httpClientFactory.CreateClient("API");
         var token = await _authService.GetToken();
-        client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        if (!string.IsNullOrEmpty(token))
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         return client;
     }
 
     public async Task<List<WishlistItemDto>> GetWishlist()
     {
-        var client = await GetClient();
-        var result = await client.GetFromJsonAsync<List<WishlistItemDto>>("api/wishlist");
-        return result ?? new List<WishlistItemDto>();
+        try
+        {
+            var client = await GetClient();
+            var response = await client.GetAsync("api/wishlist");
+            if (!response.IsSuccessStatusCode)
+                return new List<WishlistItemDto>();
+            return await response.Content.ReadFromJsonAsync<List<WishlistItemDto>>()
+                   ?? new List<WishlistItemDto>();
+        }
+        catch
+        {
+            return new List<WishlistItemDto>();
+        }
     }
 
     public async Task<(bool success, string? error)> AddToWishlist(int productId)
     {
-        var client = await GetClient();
-        var response = await client.PostAsJsonAsync("api/wishlist", new AddToWishlistDto { ProductId = productId });
-
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            var errorMessage = await response.Content.ReadAsStringAsync();
-            return (false, string.IsNullOrWhiteSpace(errorMessage) ? "Ошибка при добавлении в избранное" : errorMessage);
+            var client = await GetClient();
+            var response = await client.PostAsJsonAsync("api/wishlist", new AddToWishlistDto { ProductId = productId });
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorMessage = await response.Content.ReadAsStringAsync();
+                return (false, string.IsNullOrWhiteSpace(errorMessage) ? "Ошибка при добавлении в избранное" : errorMessage);
+            }
+            return (true, null);
         }
-
-        return (true, null);
+        catch
+        {
+            return (false, "Ошибка соединения");
+        }
     }
 
     public async Task<bool> RemoveFromWishlist(int id)
     {
-        var client = await GetClient();
-        var response = await client.DeleteAsync($"api/wishlist/{id}");
-        return response.IsSuccessStatusCode;
+        try
+        {
+            var client = await GetClient();
+            var response = await client.DeleteAsync($"api/wishlist/{id}");
+            return response.IsSuccessStatusCode;
+        }
+        catch { return false; }
     }
 
     public async Task<bool> RemoveByProductId(int productId)
     {
-        var client = await GetClient();
-        var response = await client.DeleteAsync($"api/wishlist/product/{productId}");
-        return response.IsSuccessStatusCode;
+        try
+        {
+            var client = await GetClient();
+            var response = await client.DeleteAsync($"api/wishlist/product/{productId}");
+            return response.IsSuccessStatusCode;
+        }
+        catch { return false; }
     }
 }

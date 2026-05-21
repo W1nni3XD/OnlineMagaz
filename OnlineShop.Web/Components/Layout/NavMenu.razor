@@ -20,16 +20,22 @@
             <MudNavLink Href="orders" Icon="@Icons.Material.Filled.ListAlt">
                 Мои заказы
             </MudNavLink>
-            <AuthorizeView Roles="Buyer" Context="buyerAuth">
+
+            @* Избранное: Buyer + Seller + Admin *@
+            <AuthorizeView Roles="Buyer,Seller,Admin" Context="wishlistAuth">
                 <MudNavLink Href="wishlist" Icon="@Icons.Material.Filled.Favorite">
                     Избранное
                 </MudNavLink>
             </AuthorizeView>
-            <AuthorizeView Roles="Seller" Context="sellerAuth">
+
+            @* Мои товары: Seller + Admin *@
+            <AuthorizeView Roles="Seller,Admin" Context="sellerAuth">
                 <MudNavLink Href="seller" Icon="@Icons.Material.Filled.Inventory">
                     Мои товары
                 </MudNavLink>
             </AuthorizeView>
+
+            @* Админ панель: только Admin *@
             <AuthorizeView Roles="Admin" Context="adminAuth">
                 <MudNavLink Href="admin" Icon="@Icons.Material.Filled.AdminPanelSettings">
                     Админ панель

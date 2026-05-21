@@ -26,7 +26,7 @@ public class CategoriesController : ControllerBase
         return Ok(categories);
     }
 
-    /// <summary>Категории для выбора в товаре: все категории доступны продавцу.</summary>
+    /// <summary>Категории для выбора в товаре: все категории доступны продавцу</summary>
     [HttpGet("available")]
     [Authorize(Roles = "Seller,Admin")]
     public async Task<IActionResult> GetAvailableForSeller()

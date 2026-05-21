@@ -19,11 +19,22 @@ public class EmailService
     {
         var smtpSettings = _config.GetSection("SmtpSettings");
 
+        var host = smtpSettings["Host"];
+        var portStr = smtpSettings["Port"];
+        var username = smtpSettings["Username"];
+        var password = smtpSettings["Password"];
+        var senderEmail = smtpSettings["SenderEmail"];
+        var senderName = smtpSettings["SenderName"] ?? "OnlineShop";
+
+        if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(username) ||
+            string.IsNullOrEmpty(password) || string.IsNullOrEmpty(senderEmail))
+        {
+            _logger.LogWarning("SMTP не настроен, письмо не отправлено");
+            return;
+        }
+
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress(
-            smtpSettings["SenderName"] ?? "OnlineShop",
-            smtpSettings["SenderEmail"]!
-        ));
+        message.From.Add(new MailboxAddress(senderName, senderEmail));
         message.To.Add(MailboxAddress.Parse(toEmail));
         message.Subject = "Добро пожаловать в OnlineShop!";
 
@@ -59,21 +70,16 @@ public class EmailService
         try
         {
             using var smtp = new SmtpClient();
-            await smtp.ConnectAsync(
-                smtpSettings["Host"]!,
-                int.Parse(smtpSettings["Port"] ?? "587"),
-                SecureSocketOptions.StartTls
-            );
-            await smtp.AuthenticateAsync(smtpSettings["Username"]!, smtpSettings["Password"]!);
+            _logger.LogInformation("Подключение к SMTP {Host}:{Port}", host, portStr);
+            await smtp.ConnectAsync(host, int.Parse(portStr ?? "587"), SecureSocketOptions.StartTls);
+            await smtp.AuthenticateAsync(username, password);
             await smtp.SendAsync(message);
             await smtp.DisconnectAsync(true);
-
-            _logger.LogInformation("Welcome email sent to {Email}", toEmail);
+            _logger.LogInformation("Письмо отправлено на {Email}", toEmail);
         }
         catch (Exception ex)
         {
-            // Не роняем регистрацию из-за ошибки email
-            _logger.LogError(ex, "Failed to send welcome email to {Email}", toEmail);
+            _logger.LogError(ex, "Ошибка отправки письма на {Email}: {Message}", toEmail, ex.Message);
         }
     }
 }

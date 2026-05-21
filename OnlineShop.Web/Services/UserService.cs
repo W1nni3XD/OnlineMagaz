@@ -1,6 +1,3 @@
-using System.Net.Http.Json;
-using OnlineShop.Domain.DTOs;
-
 namespace OnlineShop.Web.Services;
 
 public class UserService
@@ -18,28 +15,55 @@ public class UserService
     {
         var client = _httpClientFactory.CreateClient("API");
         var token = await _authService.GetToken();
-        client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        if (!string.IsNullOrEmpty(token))
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         return client;
     }
 
     public async Task<UserProfileDto?> GetProfile()
     {
-        var client = await GetClient();
-        return await client.GetFromJsonAsync<UserProfileDto>("api/user/profile");
+        try
+        {
+            var client = await GetClient();
+            var response = await client.GetAsync("api/user/profile");
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<UserProfileDto>();
+        }
+        catch { return null; }
     }
 
-    public async Task<(bool success, string? error)> ChangePassword(ChangePasswordDto dto)
+    public async Task<bool> ChangePassword(ChangePasswordDto dto)
     {
-        var client = await GetClient();
-        var response = await client.PutAsJsonAsync("api/user/change-password", dto);
-
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            var errorMessage = await response.Content.ReadAsStringAsync();
-            return (false, string.IsNullOrWhiteSpace(errorMessage) ? "Ошибка при смене пароля" : errorMessage);
+            var client = await GetClient();
+            var response = await client.PutAsJsonAsync("api/user/change-password", dto);
+            return response.IsSuccessStatusCode;
         }
+        catch { return false; }
+    }
 
-        return (true, null);
+    public async Task<List<UserAdminDto>> GetAllUsers()
+    {
+        try
+        {
+            var client = await GetClient();
+            var response = await client.GetAsync("api/user/all");
+            if (!response.IsSuccessStatusCode) return new();
+            return await response.Content.ReadFromJsonAsync<List<UserAdminDto>>() ?? new();
+        }
+        catch { return new(); }
+    }
+
+    public async Task<bool> ChangeRole(int userId, string role)
+    {
+        try
+        {
+            var client = await GetClient();
+            var response = await client.PutAsJsonAsync($"api/user/{userId}/role", new ChangeRoleDto { Role = role });
+            return response.IsSuccessStatusCode;
+        }
+        catch { return false; }
     }
 }

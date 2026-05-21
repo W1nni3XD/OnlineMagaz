@@ -173,7 +173,7 @@
 
         isChangingPassword = true;
 
-        var (success, error) = await UserService.ChangePassword(new ChangePasswordDto
+        var success = await UserService.ChangePassword(new ChangePasswordDto
         {
             CurrentPassword = currentPassword,
             NewPassword = newPassword
@@ -190,7 +190,7 @@
         }
         else
         {
-            passwordError = error ?? "Ошибка при смене пароля";
+            passwordError = "Ошибка при смене пароля";
         }
 
         StateHasChanged();
