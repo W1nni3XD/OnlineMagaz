@@ -23,6 +23,8 @@ builder.Services.AddScoped<WishlistService>();
 
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 builder.Services.AddAuthorizationCore();
+builder.Services.AddAuthentication();
+builder.Services.AddAuthorization();
 builder.Services.AddMudServices();
 
 var app = builder.Build();
@@ -33,6 +35,8 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapRazorComponents<OnlineShop.Web.Components.App>()

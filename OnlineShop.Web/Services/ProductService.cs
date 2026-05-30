@@ -1,5 +1,6 @@
-﻿using System.Net.Http.Json;
+﻿using Microsoft.AspNetCore.Components.Forms;
 using OnlineShop.Domain.DTOs;
+using System.Net.Http.Json;
 
 namespace OnlineShop.Web.Services;
 
@@ -84,4 +85,17 @@ public class ProductService
         var response = await client.DeleteAsync($"api/products/{id}");
         return response.IsSuccessStatusCode;
     }
+    public async Task<string?> UploadImage(IBrowserFile file)
+    {
+        var client = await GetClient(true);
+        var content = new MultipartFormDataContent();
+        var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+        content.Add(new StreamContent(stream), "file", file.Name);
+        var response = await client.PostAsync("api/products/upload-image", content);
+        if (!response.IsSuccessStatusCode) return null;
+        var result = await response.Content.ReadFromJsonAsync<UploadResult>();
+        return result?.ImageUrl;
+    }
+
+    private record UploadResult(string ImageUrl);
 }

@@ -72,7 +72,6 @@ public class ProductsController : ControllerBase
         });
     }
 
-    /// <summary>Товары текущего продавца (по JWT). Админ видит все товары.</summary>
     [HttpGet("mine")]
     [Authorize(Roles = "Seller,Admin")]
     public async Task<IActionResult> GetMine()
@@ -195,5 +194,27 @@ public class ProductsController : ControllerBase
         _context.Products.Remove(product);
         await _context.SaveChangesAsync();
         return Ok();
+    }
+
+    [HttpPost("upload-image")]
+    [Authorize(Roles = "Seller,Admin")]
+    public async Task<IActionResult> UploadImage(
+        [FromServices] MinioService minioService,
+        IFormFile file)
+    {
+        try
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("Файл не выбран");
+
+            var url = await minioService.UploadImageAsync(file);
+            return Ok(new { ImageUrl = url });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"UPLOAD ERROR: {ex.GetType().Name}: {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
+            return StatusCode(500, ex.Message);
+        }
     }
 }

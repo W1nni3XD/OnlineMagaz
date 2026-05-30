@@ -42,7 +42,7 @@ public class TokenService
             issuer: jwtSettings["Issuer"],
             audience: jwtSettings["Audience"],
             claims: claims.ToArray(),
-            expires: DateTime.UtcNow.AddDays(int.Parse(jwtSettings["ExpiryDays"]!)),
+            expires: DateTime.UtcNow.AddMinutes(int.Parse(jwtSettings["ExpiryMinutes"]!)),
             signingCredentials: credentials
         );
 

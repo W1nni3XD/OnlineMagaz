@@ -14,6 +14,35 @@
     <Routes @rendermode="new InteractiveServerRenderMode(prerender: false)" />
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script>
+        window.openFileAndUpload = async function (inputId, token, apiBase, dotNetRef) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        input.onchange = async function () {
+        if (!input.files || input.files.length === 0) return;
+        const file = input.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+        const response = await fetch(apiBase + 'api/products/upload-image', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: formData
+        });
+        if (response.ok) {
+        const data = await response.json();
+        await dotNetRef.invokeMethodAsync('OnImageUploaded', data.imageUrl);
+        } else {
+        await dotNetRef.invokeMethodAsync('OnImageUploaded', null);
+        }
+        } catch {
+        await dotNetRef.invokeMethodAsync('OnImageUploaded', null);
+        }
+        input.value = '';
+        };
+        input.click();
+        };
+    </script>
 </body>
 
 </html>

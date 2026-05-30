@@ -8,7 +8,9 @@
 @using OnlineShop.Web.Services
 @inject ProductService ProductService
 @inject CategoryService CategoryService
+@inject AuthService AuthService
 @inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 <MudText Typo="Typo.h5" Class="mb-4">Мои товары</MudText>
@@ -75,10 +77,19 @@
                                  HelperText="Не может быть отрицательным" />
             </MudItem>
             <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="imageUrlBind"
-                              Label="Ссылка на изображение (необязательно)"
-                              Variant="Variant.Outlined"
-                              HelperText="URL картинки товара" />
+                <MudText Typo="Typo.caption" Class="mb-2">Изображение товара</MudText>
+                <input id="imageFileInput" type="file" accept="image/*" style="display:none" />
+                <MudButton Variant="Variant.Outlined"
+                           Disabled="uploadingImage"
+                           StartIcon="@Icons.Material.Filled.Upload"
+                           OnClick="PickAndUploadImage">
+                    @(uploadingImage ? "Загрузка..." : "Выбрать картинку")
+                </MudButton>
+                @if (!string.IsNullOrEmpty(imageUrlBind))
+                {
+                    <MudText Typo="Typo.caption" Class="mt-1" Color="Color.Success">✓ Картинка загружена</MudText>
+                    <img src="@imageUrlBind" style="max-height:80px; margin-top:8px; display:block;" />
+                }
             </MudItem>
             <MudItem xs="12">
                 <MudButton Variant="Variant.Filled"
@@ -144,11 +155,38 @@ else
     private int? editingId;
     private bool isLoading = true;
     private bool busy;
+    private bool uploadingImage;
     private bool disposed;
+    private DotNetObjectReference<Seller>? _dotNetRef;
 
     protected override async Task OnInitializedAsync()
     {
+        _dotNetRef = DotNetObjectReference.Create(this);
         await ReloadCategoriesAndProductsAsync();
+    }
+
+    [JSInvokable]
+    public async Task OnImageUploaded(string? url)
+    {
+        uploadingImage = false;
+        if (url != null)
+        {
+            imageUrlBind = url;
+            Snackbar.Add("Картинка загружена", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add("Ошибка загрузки картинки", Severity.Error);
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task PickAndUploadImage()
+    {
+        uploadingImage = true;
+        StateHasChanged();
+        var token = await AuthService.GetToken();
+        await JSRuntime.InvokeVoidAsync("openFileAndUpload", "imageFileInput", token, "http://localhost:5170/", _dotNetRef);
     }
 
     private async Task ReloadCategoriesAndProductsAsync()
@@ -202,13 +240,10 @@ else
     {
         if (string.IsNullOrWhiteSpace(name))
             return "Название обязательно";
-
         if (name.Length < 3)
             return "Название должно содержать минимум 3 символа";
-
         if (name.Length > 200)
             return "Название слишком длинное (максимум 200 символов)";
-
         return null;
     }
 
@@ -216,7 +251,6 @@ else
     {
         if (disposed) return;
 
-        // Валидация перед отправкой
         var nameError = ValidateProductName(form.Name);
         if (nameError != null)
         {
@@ -291,5 +325,9 @@ else
         }
     }
 
-    public void Dispose() => disposed = true;
+    public void Dispose()
+    {
+        disposed = true;
+        _dotNetRef?.Dispose();
+    }
 }
