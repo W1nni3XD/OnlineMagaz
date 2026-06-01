@@ -7,9 +7,11 @@ public class MinioService
 {
     private readonly IMinioClient _minio;
     private readonly string _bucket;
+    private readonly ILogger<MinioService> _logger;
 
-    public MinioService(IConfiguration configuration)
+    public MinioService(IConfiguration configuration, ILogger<MinioService> logger)
     {
+        _logger = logger;
         var s = configuration.GetSection("MinioSettings");
         _minio = new MinioClient()
             .WithEndpoint(s["Endpoint"])
@@ -40,8 +42,9 @@ public class MinioService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"MinIO ERROR: {ex.GetType().Name}: {ex.Message}");
-            Console.WriteLine(ex.StackTrace);
+            // Console.WriteLine($"MinIO ERROR: {ex.GetType().Name}: {ex.Message}");
+            // Console.WriteLine(ex.StackTrace);
+            _logger.LogError(ex, "Ошибка при сохранении картинки");
             throw;
         }
     }
