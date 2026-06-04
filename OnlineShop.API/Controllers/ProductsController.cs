@@ -5,10 +5,12 @@
 public class ProductsController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<ProductsController> _logger;
 
-    public ProductsController(AppDbContext context)
+    public ProductsController(AppDbContext context, ILogger<ProductsController> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -151,6 +153,7 @@ public class ProductsController : ControllerBase
         _context.Products.Add(product);
         await _context.SaveChangesAsync();
 
+        _logger.LogInformation("Товар создан: {Name}, продавец: {SellerId}", product.Name, sellerId);
         return Ok(product.Id);
     }
 
@@ -175,6 +178,7 @@ public class ProductsController : ControllerBase
         product.CategoryId = dto.CategoryId;
 
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Товар обновлён: {Id}", id);
         return Ok();
     }
 
@@ -193,6 +197,7 @@ public class ProductsController : ControllerBase
 
         _context.Products.Remove(product);
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Товар удалён: {Id}", id);
         return Ok();
     }
 
@@ -208,12 +213,12 @@ public class ProductsController : ControllerBase
                 return BadRequest("Файл не выбран");
 
             var url = await minioService.UploadImageAsync(file);
+            _logger.LogInformation("Картинка загружена: {Url}", url);
             return Ok(new { ImageUrl = url });
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"UPLOAD ERROR: {ex.GetType().Name}: {ex.Message}");
-            Console.WriteLine(ex.StackTrace);
+            _logger.LogError(ex, "Ошибка загрузки картинки");
             return StatusCode(500, ex.Message);
         }
     }

@@ -5,10 +5,12 @@
 public class OrdersController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<OrdersController> _logger;
 
-    public OrdersController(AppDbContext context)
+    public OrdersController(AppDbContext context, ILogger<OrdersController> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     [HttpPost]
@@ -25,13 +27,10 @@ public class OrdersController : ControllerBase
         if (!cartItems.Any())
             return BadRequest("Корзина пуста");
 
-        // Проверка наличие товаров на складе
         foreach (var item in cartItems)
         {
             if (item.Quantity > item.Product.Stock)
-            {
                 return BadRequest($"Недостаточно товара '{item.Product.Name}' на складе. Доступно: {item.Product.Stock} шт.");
-            }
         }
 
         var order = new Order
@@ -47,11 +46,8 @@ public class OrdersController : ControllerBase
             }).ToList()
         };
 
-        // Уменьшение stockk товаров
         foreach (var item in cartItems)
-        {
             item.Product.Stock -= item.Quantity;
-        }
 
         _context.Orders.Add(order);
         _context.CartItems.RemoveRange(cartItems);
@@ -62,10 +58,10 @@ public class OrdersController : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            
             return BadRequest("Остатки товара изменились. Пожалуйста, обновите корзину и попробуйте снова.");
         }
 
+        _logger.LogInformation("Заказ создан: {OrderId} для пользователя {UserId}", order.Id, userId);
         return Ok(order.Id);
     }
 
@@ -76,8 +72,7 @@ public class OrdersController : ControllerBase
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
         var orders = await _context.Orders
-            .Include(o => o.OrderItems)
-            .ThenInclude(oi => oi.Product)
+            .Include(o => o.OrderItems).ThenInclude(oi => oi.Product)
             .Where(o => o.UserId == userId)
             .Select(o => new OrderDto
             {
@@ -103,8 +98,7 @@ public class OrdersController : ControllerBase
     public async Task<IActionResult> GetAllOrders()
     {
         var orders = await _context.Orders
-            .Include(o => o.OrderItems)
-            .ThenInclude(oi => oi.Product)
+            .Include(o => o.OrderItems).ThenInclude(oi => oi.Product)
             .Include(o => o.User)
             .Select(o => new OrderDto
             {
@@ -135,6 +129,7 @@ public class OrdersController : ControllerBase
 
         order.Status = dto.Status;
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Статус заказа {Id} изменён на {Status}", id, dto.Status);
         return Ok();
     }
 }

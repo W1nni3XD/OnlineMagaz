@@ -6,10 +6,12 @@ namespace OnlineShop.API.Controllers;
 public class UserController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<UserController> _logger;
 
-    public UserController(AppDbContext context)
+    public UserController(AppDbContext context, ILogger<UserController> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     [HttpGet("profile")]
@@ -19,12 +21,7 @@ public class UserController : ControllerBase
         var user = await _context.Users.FindAsync(userId);
         if (user == null) return NotFound();
 
-        return Ok(new UserProfileDto
-        {
-            Email = user.Email,
-            Role = user.Role,
-            SellerDisplayName = user.DisplayName
-        });
+        return Ok(new UserProfileDto { Email = user.Email, Role = user.Role, SellerDisplayName = user.DisplayName });
     }
 
     [HttpPut("change-password")]
@@ -42,24 +39,17 @@ public class UserController : ControllerBase
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Пароль изменён для пользователя {UserId}", userId);
         return Ok();
     }
 
-    // tолько для Admin
     [HttpGet("all")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetAllUsers()
     {
         var users = await _context.Users
             .OrderBy(u => u.Id)
-            .Select(u => new UserAdminDto
-            {
-                Id = u.Id,
-                Email = u.Email,
-                Role = u.Role,
-                DisplayName = u.DisplayName,
-                CreatedAt = u.CreatedAt
-            })
+            .Select(u => new UserAdminDto { Id = u.Id, Email = u.Email, Role = u.Role, DisplayName = u.DisplayName, CreatedAt = u.CreatedAt })
             .ToListAsync();
 
         return Ok(users);
@@ -78,6 +68,7 @@ public class UserController : ControllerBase
 
         user.Role = dto.Role;
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Роль пользователя {Id} изменена на {Role}", id, dto.Role);
         return Ok();
     }
 }

@@ -6,10 +6,12 @@ namespace OnlineShop.API.Controllers;
 public class WishlistController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<WishlistController> _logger;
 
-    public WishlistController(AppDbContext context)
+    public WishlistController(AppDbContext context, ILogger<WishlistController> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -18,8 +20,7 @@ public class WishlistController : ControllerBase
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
         var items = await _context.WishlistItems
-            .Include(w => w.Product)
-            .ThenInclude(p => p.Category)
+            .Include(w => w.Product).ThenInclude(p => p.Category)
             .Where(w => w.UserId == userId)
             .Select(w => new WishlistItemDto
             {
@@ -41,25 +42,19 @@ public class WishlistController : ControllerBase
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-        // Проверяем что товар существует
         var product = await _context.Products.FindAsync(dto.ProductId);
         if (product == null)
             return NotFound("Товар не найден");
 
-        // Проверяем что товар ещё не в избранном
         var existing = await _context.WishlistItems
             .FirstOrDefaultAsync(w => w.UserId == userId && w.ProductId == dto.ProductId);
 
         if (existing != null)
             return BadRequest("Товар уже в избранном");
 
-        _context.WishlistItems.Add(new WishlistItem
-        {
-            UserId = userId,
-            ProductId = dto.ProductId
-        });
-
+        _context.WishlistItems.Add(new WishlistItem { UserId = userId, ProductId = dto.ProductId });
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Товар {ProductId} добавлен в избранное пользователя {UserId}", dto.ProductId, userId);
         return Ok();
     }
 

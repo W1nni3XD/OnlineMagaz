@@ -2,7 +2,11 @@
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.AspNetCore.Authorization;
 global using System.Security.Claims;
+global using System.IdentityModel.Tokens.Jwt;
+global using Microsoft.IdentityModel.Tokens;
+global using System.Text;
 global using OnlineShop.API.Data;
 global using OnlineShop.API.Services;
 global using OnlineShop.Domain.Models.Entities;
 global using OnlineShop.Domain.DTOs;
+global using Microsoft.Extensions.Logging;

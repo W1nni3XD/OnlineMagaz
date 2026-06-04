@@ -1,16 +1,14 @@
-﻿using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Text;
-
-namespace OnlineShop.API.Services;
+﻿namespace OnlineShop.API.Services;
 
 public class TokenService
 {
     private readonly IConfiguration _configuration;
+    private readonly ILogger<TokenService> _logger;
 
-    public TokenService(IConfiguration configuration)
+    public TokenService(IConfiguration configuration, ILogger<TokenService> logger)
     {
         _configuration = configuration;
+        _logger = logger;
     }
 
     public static string GetProfileDisplay(User user)
@@ -27,11 +25,11 @@ public class TokenService
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var jti = Guid.NewGuid().ToString(); // уникальный id токена для блеклиста
+        var jti = Guid.NewGuid().ToString();
 
         var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Jti, jti), // новое
+            new Claim(JwtRegisteredClaimNames.Jti, jti),
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role),
@@ -46,6 +44,7 @@ public class TokenService
             signingCredentials: credentials
         );
 
+        _logger.LogInformation("Токен выдан пользователю {Email} с ролью {Role}", user.Email, user.Role);
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

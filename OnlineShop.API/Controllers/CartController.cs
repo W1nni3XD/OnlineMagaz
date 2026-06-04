@@ -6,10 +6,12 @@
 public class CartController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<CartController> _logger;
 
-    public CartController(AppDbContext context)
+    public CartController(AppDbContext context, ILogger<CartController> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -39,7 +41,6 @@ public class CartController : ControllerBase
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-        // Проверяем наличие товара на складе
         var product = await _context.Products.FindAsync(dto.ProductId);
         if (product == null)
             return NotFound("Товар не найден");
@@ -49,31 +50,18 @@ public class CartController : ControllerBase
 
         int newQuantity = dto.Quantity;
         if (existing != null)
-        {
             newQuantity = existing.Quantity + dto.Quantity;
-        }
 
-        // Проверяем что не превышаем остаток на складе
         if (newQuantity > product.Stock)
-        {
             return BadRequest($"Недостаточно товара на складе. Доступно: {product.Stock} шт.");
-        }
 
         if (existing != null)
-        {
             existing.Quantity = newQuantity;
-        }
         else
-        {
-            _context.CartItems.Add(new CartItem
-            {
-                UserId = userId,
-                ProductId = dto.ProductId,
-                Quantity = dto.Quantity
-            });
-        }
+            _context.CartItems.Add(new CartItem { UserId = userId, ProductId = dto.ProductId, Quantity = dto.Quantity });
 
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Товар {ProductId} добавлен в корзину пользователя {UserId}", dto.ProductId, userId);
         return Ok();
     }
 
@@ -88,11 +76,8 @@ public class CartController : ControllerBase
 
         if (item == null) return NotFound();
 
-        // Проверяем что не превышаем остаток на складе
         if (dto.Quantity > item.Product.Stock)
-        {
             return BadRequest($"Недостаточно товара на складе. Доступно: {item.Product.Stock} шт.");
-        }
 
         item.Quantity = dto.Quantity;
         await _context.SaveChangesAsync();
@@ -119,12 +104,10 @@ public class CartController : ControllerBase
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-        var items = await _context.CartItems
-            .Where(c => c.UserId == userId)
-            .ToListAsync();
-
+        var items = await _context.CartItems.Where(c => c.UserId == userId).ToListAsync();
         _context.CartItems.RemoveRange(items);
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Корзина очищена для пользователя {UserId}", userId);
         return Ok();
     }
 }

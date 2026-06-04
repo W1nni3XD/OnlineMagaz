@@ -1,6 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-
-namespace OnlineShop.API.Controllers;
+﻿namespace OnlineShop.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -9,12 +7,14 @@ public class AuthController : ControllerBase
     private readonly AppDbContext _context;
     private readonly TokenService _tokenService;
     private readonly EmailService _emailService;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(AppDbContext context, TokenService tokenService, EmailService emailService)
+    public AuthController(AppDbContext context, TokenService tokenService, EmailService emailService, ILogger<AuthController> logger)
     {
         _context = context;
         _tokenService = tokenService;
         _emailService = emailService;
+        _logger = logger;
     }
 
     [HttpPost("register")]
@@ -38,7 +38,8 @@ public class AuthController : ControllerBase
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        // ждём отправку письма 
+        _logger.LogInformation("Новый пользователь зарегистрирован: {Email}, роль: {Role}", user.Email, user.Role);
+
         _ = Task.Run(() => _emailService.SendWelcomeEmailAsync(user.Email, user.Role));
 
         var token = _tokenService.GenerateToken(user);
@@ -58,8 +59,12 @@ public class AuthController : ControllerBase
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+        {
+            _logger.LogWarning("Неудачная попытка входа для email: {Email}", dto.Email);
             return Unauthorized("Неверный email или пароль");
+        }
 
+        _logger.LogInformation("Пользователь вошёл: {Email}", user.Email);
         var token = _tokenService.GenerateToken(user);
 
         return Ok(new AuthResponseDto
@@ -84,20 +89,15 @@ public class AuthController : ControllerBase
         var jti = jwtToken.Id;
         var exp = jwtToken.ValidTo;
 
-        // записываем токен в блеклист
-        _context.RevokedTokens.Add(new RevokedToken
-        {
-            Jti = jti,
-            ExpiresAt = exp
-        });
+        _context.RevokedTokens.Add(new RevokedToken { Jti = jti, ExpiresAt = exp });
         await _context.SaveChangesAsync();
 
-        // чистим старые истёкшие токены из бд (раз в логаут)
         var now = DateTime.UtcNow;
         var expired = _context.RevokedTokens.Where(r => r.ExpiresAt < now);
         _context.RevokedTokens.RemoveRange(expired);
         await _context.SaveChangesAsync();
 
+        _logger.LogInformation("Пользователь вышел, токен отозван: {Jti}", jti);
         return Ok();
     }
 }

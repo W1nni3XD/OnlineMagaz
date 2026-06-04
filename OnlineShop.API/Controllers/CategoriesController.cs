@@ -5,10 +5,12 @@
 public class CategoriesController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<CategoriesController> _logger;
 
-    public CategoriesController(AppDbContext context)
+    public CategoriesController(AppDbContext context, ILogger<CategoriesController> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -16,30 +18,19 @@ public class CategoriesController : ControllerBase
     {
         var categories = await _context.Categories
             .OrderBy(c => c.Name)
-            .Select(c => new CategoryDto
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Description = c.Description
-            }).ToListAsync();
-
+            .Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Description = c.Description })
+            .ToListAsync();
         return Ok(categories);
     }
 
-    /// <summary>Категории для выбора в товаре: все категории доступны продавцу</summary>
     [HttpGet("available")]
     [Authorize(Roles = "Seller,Admin")]
     public async Task<IActionResult> GetAvailableForSeller()
     {
         var categories = await _context.Categories
             .OrderBy(c => c.Name)
-            .Select(c => new CategoryDto
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Description = c.Description
-            }).ToListAsync();
-
+            .Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Description = c.Description })
+            .ToListAsync();
         return Ok(categories);
     }
 
@@ -50,14 +41,10 @@ public class CategoriesController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Name))
             return BadRequest("Укажите название категории");
 
-        var category = new Category
-        {
-            Name = dto.Name.Trim(),
-            Description = dto.Description?.Trim() ?? string.Empty
-        };
-
+        var category = new Category { Name = dto.Name.Trim(), Description = dto.Description?.Trim() ?? string.Empty };
         _context.Categories.Add(category);
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Категория создана: {Name}", category.Name);
         return Ok(category.Id);
     }
 
@@ -73,8 +60,8 @@ public class CategoriesController : ControllerBase
 
         category.Name = dto.Name.Trim();
         category.Description = dto.Description?.Trim() ?? string.Empty;
-
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Категория обновлена: {Id}", id);
         return Ok();
     }
 
@@ -91,6 +78,7 @@ public class CategoriesController : ControllerBase
 
         _context.Categories.Remove(category);
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Категория удалена: {Id}", id);
         return Ok();
     }
 }
