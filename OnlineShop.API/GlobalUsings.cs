@@ -10,3 +10,6 @@ global using OnlineShop.API.Services;
 global using OnlineShop.Domain.Models.Entities;
 global using OnlineShop.Domain.DTOs;
 global using Microsoft.Extensions.Logging;
+global using Microsoft.AspNetCore.Authentication.JwtBearer;
+global using OnlineShop.API;
+global using Serilog;

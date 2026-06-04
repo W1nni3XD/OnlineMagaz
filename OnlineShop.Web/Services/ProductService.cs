@@ -1,6 +1,4 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
-using OnlineShop.Domain.DTOs;
-using System.Net.Http.Json;
 
 namespace OnlineShop.Web.Services;
 
