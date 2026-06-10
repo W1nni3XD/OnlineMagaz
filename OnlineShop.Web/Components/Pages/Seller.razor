@@ -157,36 +157,38 @@ else
     private bool busy;
     private bool uploadingImage;
     private bool disposed;
-    private DotNetObjectReference<Seller>? _dotNetRef;
 
     protected override async Task OnInitializedAsync()
     {
-        _dotNetRef = DotNetObjectReference.Create(this);
         await ReloadCategoriesAndProductsAsync();
-    }
-
-    [JSInvokable]
-    public async Task OnImageUploaded(string? url)
-    {
-        uploadingImage = false;
-        if (url != null)
-        {
-            imageUrlBind = url;
-            Snackbar.Add("Картинка загружена", Severity.Success);
-        }
-        else
-        {
-            Snackbar.Add("Ошибка загрузки картинки", Severity.Error);
-        }
-        await InvokeAsync(StateHasChanged);
     }
 
     private async Task PickAndUploadImage()
     {
         uploadingImage = true;
         StateHasChanged();
-        var token = await AuthService.GetToken();
-        await JSRuntime.InvokeVoidAsync("openFileAndUpload", "imageFileInput", token, "http://localhost:5170/", _dotNetRef);
+        try
+        {
+            var token = await AuthService.GetToken();
+            var url = await JSRuntime.InvokeAsync<string?>(
+                "openFileAndUpload",
+                TimeSpan.FromMinutes(5),
+                "imageFileInput", token, "http://localhost:5170/");
+            if (url != null)
+            {
+                imageUrlBind = url;
+                Snackbar.Add("Картинка загружена", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Ошибка загрузки картинки", Severity.Error);
+            }
+        }
+        finally
+        {
+            uploadingImage = false;
+            StateHasChanged();
+        }
     }
 
     private async Task ReloadCategoriesAndProductsAsync()
@@ -325,9 +327,5 @@ else
         }
     }
 
-    public void Dispose()
-    {
-        disposed = true;
-        _dotNetRef?.Dispose();
-    }
+    public void Dispose() => disposed = true;
 }

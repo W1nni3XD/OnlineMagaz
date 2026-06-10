@@ -57,7 +57,6 @@ public class AuthService
 
     public async Task RemoveToken()
     {
-        // сначала отзываем токен на сервере (блеклист)
         try
         {
             var token = await GetToken();
@@ -69,7 +68,7 @@ public class AuthService
                 await client.PostAsync("api/auth/logout", null);
             }
         }
-        catch { /* если API недоступен — всё равно чистим локально */ }
+        catch { }
 
         await _js.InvokeVoidAsync("localStorage.removeItem", "token");
     }

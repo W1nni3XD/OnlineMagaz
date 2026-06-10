@@ -6,6 +6,10 @@
 @using System.Security.Claims
 @using OnlineShop.Web.Services
 @inject CartSidebarState CartSidebarState
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @implements IDisposable
 
 <MudLayout>
@@ -57,6 +61,8 @@
 @code {
     private bool drawerOpen = true;
     private bool cartOpen = false;
+    private Timer? _sessionTimer;
+
     private bool CartOpen
     {
         get => cartOpen;
@@ -74,15 +80,51 @@
         CartSidebarState.OnChange += HandleCartSidebarStateChanged;
     }
 
-    private void ToggleDrawer()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        drawerOpen = !drawerOpen;
+        if (!firstRender) return;
+
+        _sessionTimer = new Timer(async _ =>
+        {
+            var token = await AuthService.GetToken();
+            if (string.IsNullOrEmpty(token)) return;
+
+            try
+            {
+                var payload = token.Split('.')[1];
+                switch (payload.Length % 4)
+                {
+                    case 2: payload += "=="; break;
+                    case 3: payload += "="; break;
+                }
+                var json = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
+                    Convert.FromBase64String(payload));
+
+                if (json != null && json.TryGetValue("exp", out var expObj) &&
+                    long.TryParse(expObj.ToString(), out var exp))
+                {
+                    var expDate = DateTimeOffset.FromUnixTimeSeconds(exp).UtcDateTime;
+                    if (expDate < DateTime.UtcNow)
+                    {
+                        await AuthService.RemoveToken();
+                        await InvokeAsync(async () =>
+                        {
+                            if (AuthenticationStateProvider is CustomAuthStateProvider provider)
+                                await provider.NotifyAuthStateChanged();
+
+                            Snackbar.Add("Сессия истекла. Пожалуйста, войдите снова.", Severity.Warning);
+                            Navigation.NavigateTo("/login", forceLoad: true);
+                        });
+                    }
+                }
+            }
+            catch { }
+        }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
     }
 
-    private void OpenCart()
-    {
-        CartSidebarState.Open();
-    }
+    private void ToggleDrawer() => drawerOpen = !drawerOpen;
+
+    private void OpenCart() => CartSidebarState.Open();
 
     private void HandleCartSidebarStateChanged()
     {
@@ -93,6 +135,7 @@
     public void Dispose()
     {
         CartSidebarState.OnChange -= HandleCartSidebarStateChanged;
+        _sessionTimer?.Dispose();
     }
 
     private static string GetProfileLabel(ClaimsPrincipal user)

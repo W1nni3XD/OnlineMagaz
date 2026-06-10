@@ -1,11 +1,14 @@
+using MudBlazor.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using OnlineShop.Web.Services;
-using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents(options =>
+    {
+        options.JSInteropDefaultCallTimeout = TimeSpan.FromMinutes(5);
+    });
 
 builder.Services.AddHttpClient("API", client =>
 {

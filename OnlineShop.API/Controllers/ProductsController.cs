@@ -30,17 +30,13 @@ public class ProductsController : ControllerBase
 
         if (categoryId.HasValue)
             query = query.Where(p => p.CategoryId == categoryId.Value);
-
         if (!string.IsNullOrEmpty(search))
             query = query.Where(p => p.Name.ToLower().Contains(search.ToLower())
                                   || p.Description.ToLower().Contains(search.ToLower()));
-
         if (minPrice.HasValue)
             query = query.Where(p => p.Price >= minPrice.Value);
-
         if (maxPrice.HasValue)
             query = query.Where(p => p.Price <= maxPrice.Value);
-
         if (inStock.HasValue && inStock.Value)
             query = query.Where(p => p.Stock > 0);
 
@@ -64,14 +60,7 @@ public class ProductsController : ControllerBase
                 SellerEmail = p.Seller.Email
             }).ToListAsync();
 
-        return Ok(new
-        {
-            Products = products,
-            TotalCount = totalCount,
-            TotalPages = totalPages,
-            CurrentPage = page,
-            PageSize = pageSize
-        });
+        return Ok(new { Products = products, TotalCount = totalCount, TotalPages = totalPages, CurrentPage = page, PageSize = pageSize });
     }
 
     [HttpGet("mine")]
@@ -81,16 +70,12 @@ public class ProductsController : ControllerBase
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var role = User.FindFirstValue(ClaimTypes.Role)!;
 
-        var query = _context.Products
-            .Include(p => p.Category)
-            .Include(p => p.Seller)
-            .AsQueryable();
+        var query = _context.Products.Include(p => p.Category).Include(p => p.Seller).AsQueryable();
 
         if (!string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
             query = query.Where(p => p.SellerId == userId);
 
-        var products = await query
-            .OrderByDescending(p => p.Id)
+        var products = await query.OrderByDescending(p => p.Id)
             .Select(p => new ProductDto
             {
                 Id = p.Id,
@@ -112,8 +97,7 @@ public class ProductsController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var product = await _context.Products
-            .Include(p => p.Category)
-            .Include(p => p.Seller)
+            .Include(p => p.Category).Include(p => p.Seller)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (product == null) return NotFound();
@@ -152,8 +136,7 @@ public class ProductsController : ControllerBase
 
         _context.Products.Add(product);
         await _context.SaveChangesAsync();
-
-        _logger.LogInformation("Товар создан: {Name}, продавец: {SellerId}", product.Name, sellerId);
+        _logger.LogInformation("Товар создан: {Name}", product.Name);
         return Ok(product.Id);
     }
 
@@ -167,13 +150,10 @@ public class ProductsController : ControllerBase
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var userRole = User.FindFirst(ClaimTypes.Role)!.Value;
 
-        if (userRole != "Admin" && product.SellerId != userId)
-            return Forbid();
+        if (userRole != "Admin" && product.SellerId != userId) return Forbid();
 
-        product.Name = dto.Name;
-        product.Description = dto.Description;
-        product.Price = dto.Price;
-        product.Stock = dto.Stock;
+        product.Name = dto.Name; product.Description = dto.Description;
+        product.Price = dto.Price; product.Stock = dto.Stock;
         product.ImageUrl = dto.ImageUrl ?? string.Empty;
         product.CategoryId = dto.CategoryId;
 
@@ -192,8 +172,7 @@ public class ProductsController : ControllerBase
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var userRole = User.FindFirst(ClaimTypes.Role)!.Value;
 
-        if (userRole != "Admin" && product.SellerId != userId)
-            return Forbid();
+        if (userRole != "Admin" && product.SellerId != userId) return Forbid();
 
         _context.Products.Remove(product);
         await _context.SaveChangesAsync();
@@ -204,7 +183,7 @@ public class ProductsController : ControllerBase
     [HttpPost("upload-image")]
     [Authorize(Roles = "Seller,Admin")]
     public async Task<IActionResult> UploadImage(
-        [FromServices] MinioService minioService,
+        [FromServices] ImageService imageService,
         IFormFile file)
     {
         try
@@ -212,7 +191,7 @@ public class ProductsController : ControllerBase
             if (file == null || file.Length == 0)
                 return BadRequest("Файл не выбран");
 
-            var url = await minioService.UploadImageAsync(file);
+            var url = await imageService.SaveImageAsync(file);
             _logger.LogInformation("Картинка загружена: {Url}", url);
             return Ok(new { ImageUrl = url });
         }

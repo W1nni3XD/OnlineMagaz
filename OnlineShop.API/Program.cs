@@ -1,3 +1,5 @@
+using Serilog;
+
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
@@ -78,6 +80,16 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors();
+
+var imagesPath = Path.Combine(builder.Environment.ContentRootPath, "Images");
+if (!Directory.Exists(imagesPath))
+    Directory.CreateDirectory(imagesPath);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(imagesPath),
+    RequestPath = "/images"
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

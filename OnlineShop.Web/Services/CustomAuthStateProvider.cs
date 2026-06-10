@@ -20,19 +20,34 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
             var token = await _authService.GetToken();
 
             if (string.IsNullOrEmpty(token))
-                return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+                return Anonymous();
 
-            var claims = ParseClaimsFromJwt(token);
+            var claims = ParseClaimsFromJwt(token).ToList();
+
+            // проверяем срок действия токена
+            var expClaim = claims.FirstOrDefault(c => c.Type == "exp");
+            if (expClaim != null && long.TryParse(expClaim.Value, out var exp))
+            {
+                var expDate = DateTimeOffset.FromUnixTimeSeconds(exp).UtcDateTime;
+                if (expDate < DateTime.UtcNow)
+                {
+                    // токен истёк чистим localStorage
+                    await _authService.RemoveToken();
+                    return Anonymous();
+                }
+            }
+
             var identity = new ClaimsIdentity(claims, "jwt");
-            var user = new ClaimsPrincipal(identity);
-
-            return new AuthenticationState(user);
+            return new AuthenticationState(new ClaimsPrincipal(identity));
         }
         catch
         {
-            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+            return Anonymous();
         }
     }
+
+    private static AuthenticationState Anonymous()
+        => new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
 
     public async Task NotifyAuthStateChanged()
     {
@@ -44,16 +59,13 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
     {
         var claims = new List<Claim>();
         var payload = jwt.Split('.')[1];
-
         var jsonBytes = ParseBase64WithoutPadding(payload);
         var keyValuePairs = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonBytes);
 
         if (keyValuePairs == null) return claims;
 
         foreach (var kvp in keyValuePairs)
-        {
             claims.Add(new Claim(kvp.Key, kvp.Value.ToString() ?? string.Empty));
-        }
 
         return claims;
     }

@@ -15,11 +15,12 @@
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script>
-        window.openFileAndUpload = async function (inputId, token, apiBase, dotNetRef) {
+        window.openFileAndUpload = async function (inputId, token, apiBase) {
+        return new Promise((resolve) => {
         const input = document.getElementById(inputId);
-        if (!input) return;
+        if (!input) { resolve(null); return; }
         input.onchange = async function () {
-        if (!input.files || input.files.length === 0) return;
+        if (!input.files || input.files.length === 0) { resolve(null); return; }
         const file = input.files[0];
         const formData = new FormData();
         formData.append('file', file);
@@ -31,16 +32,17 @@
         });
         if (response.ok) {
         const data = await response.json();
-        await dotNetRef.invokeMethodAsync('OnImageUploaded', data.imageUrl);
+        resolve(data.imageUrl);
         } else {
-        await dotNetRef.invokeMethodAsync('OnImageUploaded', null);
+        resolve(null);
         }
         } catch {
-        await dotNetRef.invokeMethodAsync('OnImageUploaded', null);
+        resolve(null);
         }
         input.value = '';
         };
         input.click();
+        });
         };
     </script>
 </body>
