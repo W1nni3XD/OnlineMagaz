@@ -4,7 +4,7 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args); 
 
 builder.Host.UseSerilog();
 
@@ -12,7 +12,11 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("https://localhost:7193", "http://localhost:7193")
+        policy.WithOrigins(
+                  "https://localhost:7193",
+                  "http://localhost:7193",
+                  "http://localhost:5149",
+                  "https://localhost:5149")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });

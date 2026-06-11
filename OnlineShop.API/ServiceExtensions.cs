@@ -6,7 +6,6 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        services.AddScoped<ImageService>();
         services.AddScoped<TokenService>();
         services.AddScoped<EmailService>();
         return services;

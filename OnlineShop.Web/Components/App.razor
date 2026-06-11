@@ -15,34 +15,59 @@
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script>
-        window.openFileAndUpload = async function (inputId, token, apiBase) {
-        return new Promise((resolve) => {
-        const input = document.getElementById(inputId);
-        if (!input) { resolve(null); return; }
-        input.onchange = async function () {
-        if (!input.files || input.files.length === 0) { resolve(null); return; }
-        const file = input.files[0];
-        const formData = new FormData();
-        formData.append('file', file);
-        try {
-        const response = await fetch(apiBase + 'api/products/upload-image', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token },
-        body: formData
-        });
-        if (response.ok) {
-        const data = await response.json();
-        resolve(data.imageUrl);
-        } else {
-        resolve(null);
-        }
-        } catch {
-        resolve(null);
-        }
-        input.value = '';
-        };
-        input.click();
-        });
+        window.openFileAndUpload = function (inputId, token, apiBase, dotNetRef) {
+            const input = document.getElementById(inputId);
+            if (!input) {
+                dotNetRef.invokeMethodAsync('OnImageUploaded', null);
+                return;
+            }
+
+            let settled = false;
+            const finish = (url) => {
+                if (settled) return;
+                settled = true;
+                window.removeEventListener('focus', onWindowFocus);
+                dotNetRef.invokeMethodAsync('OnImageUploaded', url);
+            };
+
+            const onWindowFocus = () => {
+                setTimeout(() => {
+                    if (!settled && (!input.files || input.files.length === 0))
+                        finish(null);
+                }, 400);
+            };
+
+            input.onchange = async function () {
+                if (!input.files || input.files.length === 0) {
+                    finish(null);
+                    return;
+                }
+
+                const file = input.files[0];
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch(apiBase + 'api/products/upload-image', {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + token },
+                        body: formData
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        finish(data.imageUrl ?? data.ImageUrl ?? null);
+                    } else {
+                        finish(null);
+                    }
+                } catch {
+                    finish(null);
+                }
+
+                input.value = '';
+            };
+
+            window.addEventListener('focus', onWindowFocus);
+            input.click();
         };
     </script>
 </body>

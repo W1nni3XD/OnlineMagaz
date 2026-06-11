@@ -57,7 +57,7 @@
 
                         @if (!string.IsNullOrEmpty(item.ProductImageUrl))
                         {
-                            <MudCardMedia Image="@item.ProductImageUrl" Height="200" />
+                            <MudCardMedia Image="@ImageUrlNormalizer.Normalize(item.ProductImageUrl)" Height="200" />
                         }
                         else
                         {

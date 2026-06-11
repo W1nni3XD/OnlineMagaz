@@ -10,9 +10,11 @@ builder.Services.AddRazorComponents()
         options.JSInteropDefaultCallTimeout = TimeSpan.FromMinutes(5);
     });
 
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5170/";
+
 builder.Services.AddHttpClient("API", client =>
 {
-    client.BaseAddress = new Uri("http://localhost:5170/");
+    client.BaseAddress = new Uri(apiBaseUrl);
 });
 
 builder.Services.AddScoped<AuthService>();
@@ -36,6 +38,26 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
 }
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/images"))
+    {
+        var client = context.RequestServices.GetRequiredService<IHttpClientFactory>().CreateClient("API");
+        var targetPath = context.Request.Path.Value!.TrimStart('/') + context.Request.QueryString;
+        using var request = new HttpRequestMessage(HttpMethod.Get, targetPath);
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, context.RequestAborted);
+
+        context.Response.StatusCode = (int)response.StatusCode;
+        if (response.Content.Headers.ContentType is { } contentType)
+            context.Response.ContentType = contentType.ToString();
+
+        await response.Content.CopyToAsync(context.Response.Body, context.RequestAborted);
+        return;
+    }
+
+    await next();
+});
 
 app.UseStaticFiles();
 app.UseAuthentication();

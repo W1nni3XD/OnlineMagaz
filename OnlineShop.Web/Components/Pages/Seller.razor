@@ -11,6 +11,8 @@
 @inject AuthService AuthService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JSRuntime
+@inject IConfiguration Configuration
+@using Microsoft.JSInterop
 @implements IDisposable
 
 <MudText Typo="Typo.h5" Class="mb-4">Мои товары</MudText>
@@ -88,7 +90,7 @@
                 @if (!string.IsNullOrEmpty(imageUrlBind))
                 {
                     <MudText Typo="Typo.caption" Class="mt-1" Color="Color.Success">✓ Картинка загружена</MudText>
-                    <img src="@imageUrlBind" style="max-height:80px; margin-top:8px; display:block;" />
+                    <img src="@ImageUrlNormalizer.Normalize(imageUrlBind)" style="max-height:80px; margin-top:8px; display:block;" />
                 }
             </MudItem>
             <MudItem xs="12">
@@ -157,38 +159,60 @@ else
     private bool busy;
     private bool uploadingImage;
     private bool disposed;
+    private DotNetObjectReference<Seller>? dotNetRef;
 
     protected override async Task OnInitializedAsync()
     {
+        dotNetRef = DotNetObjectReference.Create(this);
         await ReloadCategoriesAndProductsAsync();
     }
 
     private async Task PickAndUploadImage()
     {
+        if (dotNetRef == null) return;
+
         uploadingImage = true;
         StateHasChanged();
-        try
+
+        var token = await AuthService.GetToken();
+        if (string.IsNullOrEmpty(token))
         {
-            var token = await AuthService.GetToken();
-            var url = await JSRuntime.InvokeAsync<string?>(
-                "openFileAndUpload",
-                TimeSpan.FromMinutes(5),
-                "imageFileInput", token, "http://localhost:5170/");
-            if (url != null)
+            uploadingImage = false;
+            Snackbar.Add("Сессия истекла — войдите снова", Severity.Warning);
+            StateHasChanged();
+            return;
+        }
+
+        var apiBase = Configuration["ApiBaseUrl"] ?? "http://localhost:5170/";
+        await JSRuntime.InvokeVoidAsync(
+            "openFileAndUpload",
+            "imageFileInput",
+            token,
+            apiBase,
+            dotNetRef);
+    }
+
+    [JSInvokable]
+    public Task OnImageUploaded(string? url)
+    {
+        return InvokeAsync(() =>
+        {
+            if (disposed) return;
+
+            uploadingImage = false;
+
+            if (!string.IsNullOrEmpty(url))
             {
-                imageUrlBind = url;
+                imageUrlBind = ImageUrlNormalizer.Normalize(url) ?? string.Empty;
                 Snackbar.Add("Картинка загружена", Severity.Success);
             }
             else
             {
                 Snackbar.Add("Ошибка загрузки картинки", Severity.Error);
             }
-        }
-        finally
-        {
-            uploadingImage = false;
+
             StateHasChanged();
-        }
+        });
     }
 
     private async Task ReloadCategoriesAndProductsAsync()
@@ -225,7 +249,7 @@ else
             CategoryId = p.CategoryId,
             ImageUrl = string.IsNullOrEmpty(p.ImageUrl) ? null : p.ImageUrl
         };
-        imageUrlBind = p.ImageUrl ?? string.Empty;
+        imageUrlBind = ImageUrlNormalizer.Normalize(p.ImageUrl) ?? string.Empty;
         StateHasChanged();
     }
 
@@ -327,5 +351,9 @@ else
         }
     }
 
-    public void Dispose() => disposed = true;
+    public void Dispose()
+    {
+        disposed = true;
+        dotNetRef?.Dispose();
+    }
 }

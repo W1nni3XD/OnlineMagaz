@@ -5,11 +5,13 @@
 public class ProductsController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IWebHostEnvironment _env;
     private readonly ILogger<ProductsController> _logger;
 
-    public ProductsController(AppDbContext context, ILogger<ProductsController> logger)
+    public ProductsController(AppDbContext context, IWebHostEnvironment env, ILogger<ProductsController> logger)
     {
         _context = context;
+        _env = env;
         _logger = logger;
     }
 
