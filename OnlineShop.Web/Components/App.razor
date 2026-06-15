@@ -18,6 +18,7 @@
         window.openFileAndUpload = function (inputId, token, apiBase, dotNetRef) {
             const input = document.getElementById(inputId);
             if (!input) {
+                console.error('openFileAndUpload: input #' + inputId + ' not found');
                 dotNetRef.invokeMethodAsync('OnImageUploaded', null);
                 return;
             }
@@ -37,6 +38,9 @@
                 }, 400);
             };
 
+            const base = (apiBase || '').replace(/\/+$/, '');
+            const uploadUrl = base + '/api/products/upload-image';
+
             input.onchange = async function () {
                 if (!input.files || input.files.length === 0) {
                     finish(null);
@@ -48,7 +52,7 @@
                 formData.append('file', file);
 
                 try {
-                    const response = await fetch(apiBase + 'api/products/upload-image', {
+                    const response = await fetch(uploadUrl, {
                         method: 'POST',
                         headers: { 'Authorization': 'Bearer ' + token },
                         body: formData
@@ -57,9 +61,12 @@
                         const data = await response.json();
                         finish(data.imageUrl ?? data.ImageUrl ?? null);
                     } else {
+                        const errorText = await response.text().catch(() => 'unknown error');
+                        console.error('Upload failed:', response.status, response.statusText, errorText);
                         finish(null);
                     }
-                } catch {
+                } catch (err) {
+                    console.error('Upload exception:', err);
                     finish(null);
                 }
 

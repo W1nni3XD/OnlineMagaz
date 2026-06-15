@@ -8,6 +8,7 @@ public static class ServiceExtensions
     {
         services.AddScoped<TokenService>();
         services.AddScoped<EmailService>();
+        services.AddScoped<ImageService>();
         return services;
     }
 }

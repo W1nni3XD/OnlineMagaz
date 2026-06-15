@@ -1,48 +1,27 @@
 namespace OnlineShop.Web.Services;
 
-public class WishlistService
+public class WishlistService : BaseApiService
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly AuthService _authService;
-
     public WishlistService(IHttpClientFactory httpClientFactory, AuthService authService)
-    {
-        _httpClientFactory = httpClientFactory;
-        _authService = authService;
-    }
-
-    private async Task<HttpClient> GetClient()
-    {
-        var client = _httpClientFactory.CreateClient("API");
-        var token = await _authService.GetToken();
-        if (!string.IsNullOrEmpty(token))
-            client.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-        return client;
-    }
+        : base(httpClientFactory, authService) { }
 
     public async Task<List<WishlistItemDto>> GetWishlist()
     {
         try
         {
-            var client = await GetClient();
+            var client = await GetClient(true);
             var response = await client.GetAsync("api/wishlist");
-            if (!response.IsSuccessStatusCode)
-                return new List<WishlistItemDto>();
-            return await response.Content.ReadFromJsonAsync<List<WishlistItemDto>>()
-                   ?? new List<WishlistItemDto>();
+            if (!response.IsSuccessStatusCode) return new List<WishlistItemDto>();
+            return await response.Content.ReadFromJsonAsync<List<WishlistItemDto>>() ?? new List<WishlistItemDto>();
         }
-        catch
-        {
-            return new List<WishlistItemDto>();
-        }
+        catch { return new List<WishlistItemDto>(); }
     }
 
     public async Task<(bool success, string? error)> AddToWishlist(int productId)
     {
         try
         {
-            var client = await GetClient();
+            var client = await GetClient(true);
             var response = await client.PostAsJsonAsync("api/wishlist", new AddToWishlistDto { ProductId = productId });
             if (!response.IsSuccessStatusCode)
             {
@@ -51,17 +30,14 @@ public class WishlistService
             }
             return (true, null);
         }
-        catch
-        {
-            return (false, "Ошибка соединения");
-        }
+        catch { return (false, "Ошибка соединения"); }
     }
 
     public async Task<bool> RemoveFromWishlist(int id)
     {
         try
         {
-            var client = await GetClient();
+            var client = await GetClient(true);
             var response = await client.DeleteAsync($"api/wishlist/{id}");
             return response.IsSuccessStatusCode;
         }
@@ -72,7 +48,7 @@ public class WishlistService
     {
         try
         {
-            var client = await GetClient();
+            var client = await GetClient(true);
             var response = await client.DeleteAsync($"api/wishlist/product/{productId}");
             return response.IsSuccessStatusCode;
         }

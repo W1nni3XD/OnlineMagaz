@@ -1,4 +1,5 @@
 ﻿@page "/catalog"
+@using Microsoft.AspNetCore.Components.Authorization
 @using MudBlazor
 @using OnlineShop.Web.Services
 @using OnlineShop.Domain.DTOs
@@ -8,6 +9,8 @@
 @inject WishlistService WishlistService
 @inject CartSidebarState CartSidebarState
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ISnackbar Snackbar
 @implements IDisposable
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
@@ -228,6 +231,13 @@
     private async Task AddToCart(int productId)
     {
         if (disposed) return;
+
+        if (!await IsAuthenticated())
+        {
+            Snackbar.Add("Вы должны войти в аккаунт!", Severity.Warning);
+            return;
+        }
+
         var isAdded = await CartService.AddToCart(new OnlineShop.Domain.DTOs.AddToCartDto
         {
             ProductId = productId,
@@ -237,6 +247,12 @@
             CartSidebarState.Open();
         if (!disposed)
             await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task<bool> IsAuthenticated()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        return authState.User.Identity?.IsAuthenticated == true;
     }
 
     public void Dispose()

@@ -1,30 +1,9 @@
-﻿using System.Net.Http.Json;
-using OnlineShop.Domain.DTOs;
+﻿namespace OnlineShop.Web.Services;
 
-namespace OnlineShop.Web.Services;
-
-public class CategoryService
+public class CategoryService : BaseApiService
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly AuthService _authService;
-
     public CategoryService(IHttpClientFactory httpClientFactory, AuthService authService)
-    {
-        _httpClientFactory = httpClientFactory;
-        _authService = authService;
-    }
-
-    private async Task<HttpClient> GetClient(bool withAuth = false)
-    {
-        var client = _httpClientFactory.CreateClient("API");
-        if (withAuth)
-        {
-            var token = await _authService.GetToken();
-            client.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-        }
-        return client;
-    }
+        : base(httpClientFactory, authService) { }
 
     public async Task<List<CategoryDto>> GetAll()
     {
@@ -33,7 +12,6 @@ public class CategoryService
         return result ?? new List<CategoryDto>();
     }
 
-    /// <summary>Общие категории + свои (JWT).</summary>
     public async Task<List<CategoryDto>> GetAvailableForSeller()
     {
         var client = await GetClient(true);

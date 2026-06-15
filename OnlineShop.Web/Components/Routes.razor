@@ -1,9 +1,39 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
+@using MudBlazor
+@inject NavigationManager Navigation
 
 <CascadingAuthenticationState>
     <Router AppAssembly="typeof(Program).Assembly">
         <Found Context="routeData">
-            <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+                <NotAuthorized>
+                    <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+                        @if (context.User.Identity?.IsAuthenticated != true)
+                        {
+                            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                                Доступ запрещён. Войдите в аккаунт, чтобы просматривать эту страницу.
+                            </MudAlert>
+                            <MudButton Href="/login" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true">
+                                Войти
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Error" Class="mb-4">
+                                У вас недостаточно прав для доступа к этой странице.
+                            </MudAlert>
+                            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary">
+                                На главную
+                            </MudButton>
+                        }
+                    </MudContainer>
+                </NotAuthorized>
+                <Authorizing>
+                    <MudContainer Class="d-flex justify-center mt-8">
+                        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                    </MudContainer>
+                </Authorizing>
+            </AuthorizeRouteView>
         </Found>
     </Router>
 </CascadingAuthenticationState>

@@ -2,28 +2,10 @@
 
 namespace OnlineShop.Web.Services;
 
-public class ProductService
+public class ProductService : BaseApiService
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly AuthService _authService;
-
     public ProductService(IHttpClientFactory httpClientFactory, AuthService authService)
-    {
-        _httpClientFactory = httpClientFactory;
-        _authService = authService;
-    }
-
-    private async Task<HttpClient> GetClient(bool withAuth = false)
-    {
-        var client = _httpClientFactory.CreateClient("API");
-        if (withAuth)
-        {
-            var token = await _authService.GetToken();
-            client.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-        }
-        return client;
-    }
+        : base(httpClientFactory, authService) { }
 
     public async Task<PaginatedProductsDto> GetAll(
         int? categoryId = null,
@@ -55,7 +37,6 @@ public class ProductService
         return await client.GetFromJsonAsync<ProductDto>($"api/products/{id}");
     }
 
-    /// <summary>Товары текущего продавца (требуется JWT).</summary>
     public async Task<List<ProductDto>> GetMine()
     {
         var client = await GetClient(true);
@@ -83,6 +64,7 @@ public class ProductService
         var response = await client.DeleteAsync($"api/products/{id}");
         return response.IsSuccessStatusCode;
     }
+
     public async Task<string?> UploadImage(IBrowserFile file)
     {
         var client = await GetClient(true);
