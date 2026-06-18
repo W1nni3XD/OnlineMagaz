@@ -13,9 +13,10 @@
 @inject ISnackbar Snackbar
 @implements IDisposable
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+<MudText Typo="Typo.h4" Class="page-title mb-4">Каталог</MudText>
 
-    <MudGrid Class="mb-4">
+<MudPaper Elevation="0" Class="filters-panel mb-5">
+    <MudGrid Spacing="3">
         <MudItem xs="12" sm="6" md="3">
             <MudTextField @bind-Value="searchQuery"
                           Label="Поиск товаров"
@@ -36,7 +37,7 @@
                 }
             </MudSelect>
         </MudItem>
-        <MudItem xs="12" sm="6" md="2">
+        <MudItem xs="6" sm="3" md="2">
             <MudNumericField @bind-Value="minPrice"
                              Label="Цена от"
                              Variant="Variant.Outlined"
@@ -44,7 +45,7 @@
                              Format="N0"
                              @bind-Value:after="LoadProducts" />
         </MudItem>
-        <MudItem xs="12" sm="6" md="2">
+        <MudItem xs="6" sm="3" md="2">
             <MudNumericField @bind-Value="maxPrice"
                              Label="Цена до"
                              Variant="Variant.Outlined"
@@ -52,82 +53,82 @@
                              Format="N0"
                              @bind-Value:after="LoadProducts" />
         </MudItem>
-        <MudItem xs="12" sm="6" md="2">
+        <MudItem xs="12" md="2" Class="d-flex align-center">
             <MudCheckBox @bind-Value="onlyInStock"
-                         Label="Только в наличии"
+                         Label="В наличии"
                          Color="Color.Primary"
                          @bind-Value:after="LoadProducts" />
         </MudItem>
     </MudGrid>
+</MudPaper>
 
-    @if (isLoading)
-    {
-        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-    }
-    else if (!products.Any())
-    {
-        <MudAlert Severity="Severity.Info">Товары не найдены</MudAlert>
-    }
-    else
-    {
-        <MudGrid>
-            @foreach (var product in products)
-            {
-                <MudItem xs="12" sm="6" md="3">
-                    <MudCard Elevation="2" Style="border-radius: 12px; height: 100%; position: relative;">
+@if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else if (!products.Any())
+{
+    <MudAlert Severity="Severity.Info" Class="empty-state">Товары не найдены — попробуйте изменить фильтры.</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="4">
+        @foreach (var product in products)
+        {
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="0" Class="product-card">
 
-                        <!-- Кнопка избранного -->
-                        <MudIconButton Icon="@(wishlistIds.Contains(product.Id) ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
-                                       Color="@(wishlistIds.Contains(product.Id) ? Color.Error : Color.Default)"
+                    <MudIconButton Icon="@(wishlistIds.Contains(product.Id) ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                                   Color="@(wishlistIds.Contains(product.Id) ? Color.Error : Color.Default)"
+                                   Size="Size.Small"
+                                   Class="wishlist-btn"
+                                   OnClick="() => ToggleWishlist(product.Id)"
+                                   Title="@(wishlistIds.Contains(product.Id) ? "Убрать из избранного" : "В избранное")" />
+
+                    @if (!string.IsNullOrEmpty(product.ImageUrl))
+                    {
+                        <MudCardMedia Image="@ImageUrlNormalizer.Normalize(product.ImageUrl)" Height="200" Class="product-media" />
+                    }
+                    else
+                    {
+                        <div class="product-media-placeholder">
+                            <MudIcon Icon="@Icons.Material.Filled.Image" />
+                        </div>
+                    }
+                    <MudCardContent Class="pb-0">
+                        <MudText Typo="Typo.subtitle1" Class="product-name">@product.Name</MudText>
+                        <MudChip T="string" Size="Size.Small" Class="category-chip">@product.CategoryName</MudChip>
+                        <MudText Typo="Typo.h6" Class="product-price mt-2">
+                            @product.Price.ToString("C")
+                        </MudText>
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   OnClick='() => Navigation.NavigateTo($"/product/{product.Id}")'>
+                            Подробнее
+                        </MudButton>
+                        <MudSpacer />
+                        <MudIconButton Icon="@Icons.Material.Outlined.ShoppingCart"
+                                       Color="Color.Primary"
+                                       Variant="Variant.Filled"
                                        Size="Size.Small"
-                                       Style="position: absolute; top: 8px; right: 8px; z-index: 1; background: white; border-radius: 50%;"
-                                       OnClick="() => ToggleWishlist(product.Id)"
-                                       Title="@(wishlistIds.Contains(product.Id) ? "Убрать из избранного" : "В избранное")" />
+                                       OnClick="() => AddToCart(product.Id)"
+                                       Title="В корзину" />
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
 
-                        @if (!string.IsNullOrEmpty(product.ImageUrl))
-                        {
-                            <MudCardMedia Image="@ImageUrlNormalizer.Normalize(product.ImageUrl)" Height="200" />
-                        }
-                        else
-                        {
-                            <div style="height: 200px; background: #f5f5f5; display: flex; align-items: center; justify-content: center;">
-                                <MudIcon Icon="@Icons.Material.Filled.Image" Style="font-size: 4rem; color: #ccc;" />
-                            </div>
-                        }
-                        <MudCardContent>
-                            <MudText Typo="Typo.h6" Style="font-weight: 600;">@product.Name</MudText>
-                            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="mt-1">@product.CategoryName</MudChip>
-                            <MudText Typo="Typo.h6" Color="Color.Primary" Class="mt-2">
-                                @product.Price.ToString("C")
-                            </MudText>
-                        </MudCardContent>
-                        <MudCardActions>
-                            <MudButton Variant="Variant.Text"
-                                       Color="Color.Primary"
-                                       OnClick='() => Navigation.NavigateTo($"/product/{product.Id}")'>
-                                Подробнее
-                            </MudButton>
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.ShoppingCart"
-                                       OnClick="() => AddToCart(product.Id)">
-                                В корзину
-                            </MudButton>
-                        </MudCardActions>
-                    </MudCard>
-                </MudItem>
-            }
-        </MudGrid>
-
-        <MudPagination Class="mt-4"
-                       Count="@totalPages"
-                       Selected="@currentPage"
-                       SelectedChanged="@OnPageChanged"
-                       Color="Color.Primary"
-                       ShowFirstButton="true"
-                       ShowLastButton="true" />
-    }
-</MudContainer>
+    <MudPagination Class="mt-6 d-flex justify-center"
+                   Count="@totalPages"
+                   Selected="@currentPage"
+                   SelectedChanged="@OnPageChanged"
+                   Color="Color.Primary"
+                   ShowFirstButton="true"
+                   ShowLastButton="true" />
+}
 
 @code {
     [SupplyParameterFromQuery]
@@ -161,7 +162,6 @@
 
                 await LoadProducts();
 
-                // Загружаем избранное (если не авторизован — просто пустой список)
                 try
                 {
                     var wishlist = await WishlistService.GetWishlist();

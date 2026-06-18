@@ -1,6 +1,4 @@
-﻿using MailKit;
-
-namespace OnlineShop.API;
+﻿namespace OnlineShop.API;
 
 public static class ServiceExtensions
 {

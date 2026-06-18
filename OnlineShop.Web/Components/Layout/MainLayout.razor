@@ -13,39 +13,88 @@
 @implements IDisposable
 
 <MudLayout>
-    <MudAppBar Elevation="1" Color="Color.Primary">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu"
-                       Color="Color.Inherit"
-                       Edge="Edge.Start"
-                       OnClick="ToggleDrawer" />
-        <MudText Typo="Typo.h6" Class="ml-3">OnlineShop</MudText>
+    <MudAppBar Elevation="0" Class="app-bar">
+        <div class="brand">
+            <MudIcon Icon="@Icons.Material.Filled.Storefront" Class="brand-icon" />
+            <MudText Typo="Typo.h6" Class="brand-text">OnlineShop</MudText>
+        </div>
+
+        <nav class="top-nav d-none d-md-flex">
+            <MudNavLink Href="" Match="NavLinkMatch.All">Главная</MudNavLink>
+            <MudNavLink Href="catalog">Каталог</MudNavLink>
+            <AuthorizeView Context="navAuth">
+                <Authorized>
+                    <MudNavLink Href="orders">Мои заказы</MudNavLink>
+                    <AuthorizeView Roles="Buyer,Seller,Admin" Context="wishlistAuth">
+                        <MudNavLink Href="wishlist">Избранное</MudNavLink>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="Seller,Admin" Context="sellerAuth">
+                        <MudNavLink Href="seller">Мои товары</MudNavLink>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="Admin" Context="adminAuth">
+                        <MudNavLink Href="admin">Админ панель</MudNavLink>
+                    </AuthorizeView>
+                </Authorized>
+            </AuthorizeView>
+        </nav>
+
         <MudSpacer />
-        <AuthorizeView>
+
+        <AuthorizeView Context="headerAuth">
             <Authorized>
-                <MudText Typo="Typo.body2" Class="mr-2" Style="align-self:center;">
-                    @(GetProfileLabel(context.User))
-                </MudText>
-                <MudIconButton Icon="@Icons.Material.Filled.ShoppingCart"
+                <MudButton Href="profile" Variant="Variant.Text" Color="Color.Inherit" Class="profile-link d-none d-sm-flex">
+                    @(GetProfileLabel(headerAuth.User))
+                </MudButton>
+                <MudIconButton Icon="@Icons.Material.Outlined.ShoppingCart"
                                Color="Color.Inherit"
-                               OnClick="OpenCart" />
-                <MudButton Href="/logout" Color="Color.Inherit">Выйти</MudButton>
+                               OnClick="OpenCart"
+                               aria-label="Открыть корзину" />
+                <MudButton Href="/logout" Variant="Variant.Outlined" Color="Color.Inherit" Class="ml-2">
+                    Выйти
+                </MudButton>
             </Authorized>
             <NotAuthorized>
-                <MudButton Href="/login" Color="Color.Inherit">Войти</MudButton>
-                <MudButton Href="/register" Color="Color.Inherit">Регистрация</MudButton>
+                <MudButton Href="/login" Variant="Variant.Text" Color="Color.Inherit">Войти</MudButton>
+                <MudButton Href="/register" Variant="Variant.Filled" Color="Color.Secondary" Class="ml-2">
+                    Регистрация
+                </MudButton>
             </NotAuthorized>
         </AuthorizeView>
+
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       Class="d-md-none ml-1"
+                       OnClick="ToggleMobileMenu"
+                       aria-label="Меню" />
     </MudAppBar>
 
-    <MudDrawer @bind-Open="drawerOpen" Elevation="1">
-        <MudDrawerHeader>
-            <MudText Typo="Typo.h6">Меню</MudText>
-        </MudDrawerHeader>
-        <NavMenu />
-    </MudDrawer>
+    @if (mobileMenuOpen)
+    {
+        <div class="mobile-nav d-md-none">
+            <MudNavMenu>
+                <MudNavLink Href="" Match="NavLinkMatch.All" OnClick="CloseMobileMenu">Главная</MudNavLink>
+                <MudNavLink Href="catalog" OnClick="CloseMobileMenu">Каталог</MudNavLink>
+                <AuthorizeView Context="mobileAuth">
+                    <Authorized>
+                        <MudNavLink Href="profile" OnClick="CloseMobileMenu">Профиль</MudNavLink>
+                        <MudNavLink Href="orders" OnClick="CloseMobileMenu">Мои заказы</MudNavLink>
+                        <AuthorizeView Roles="Buyer,Seller,Admin" Context="wishlistAuthMobile">
+                            <MudNavLink Href="wishlist" OnClick="CloseMobileMenu">Избранное</MudNavLink>
+                        </AuthorizeView>
+                        <AuthorizeView Roles="Seller,Admin" Context="sellerAuthMobile">
+                            <MudNavLink Href="seller" OnClick="CloseMobileMenu">Мои товары</MudNavLink>
+                        </AuthorizeView>
+                        <AuthorizeView Roles="Admin" Context="adminAuthMobile">
+                            <MudNavLink Href="admin" OnClick="CloseMobileMenu">Админ панель</MudNavLink>
+                        </AuthorizeView>
+                    </Authorized>
+                </AuthorizeView>
+            </MudNavMenu>
+        </div>
+    }
 
     <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+        <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 mb-8">
             @Body
         </MudContainer>
     </MudMainContent>
@@ -53,15 +102,27 @@
     <CartSidebar @bind-IsOpen="CartOpen" />
 </MudLayout>
 
-<MudThemeProvider />
+<MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
 <MudSnackbarProvider />
 <MudDialogProvider />
 
 @code {
-    private bool drawerOpen = true;
     private bool cartOpen = false;
+    private bool mobileMenuOpen = false;
     private Timer? _sessionTimer;
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#1F2D3D",
+            Secondary = "#D98E4A",
+            AppbarBackground = "#1F2D3D",
+            Background = "#F7F5F2",
+            Surface = "#FFFFFF"
+        }
+    };
 
     private bool CartOpen
     {
@@ -122,7 +183,8 @@
         }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
     }
 
-    private void ToggleDrawer() => drawerOpen = !drawerOpen;
+    private void ToggleMobileMenu() => mobileMenuOpen = !mobileMenuOpen;
+    private void CloseMobileMenu() => mobileMenuOpen = false;
 
     private void OpenCart() => CartSidebarState.Open();
 
