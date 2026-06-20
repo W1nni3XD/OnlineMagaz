@@ -1,6 +1,5 @@
 using MudBlazor.Services;
-using Microsoft.AspNetCore.Components.Authorization;
-using OnlineShop.Web.Services;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
