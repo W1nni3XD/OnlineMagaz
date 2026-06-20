@@ -1,0 +1,73 @@
+services:
+  db:
+    build:
+      context: .
+      dockerfile: docker/db/Dockerfile
+    container_name: online-magaz-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: OnlineShopDb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d OnlineShopDb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  migrator:
+    build:
+      context: .
+      dockerfile: docker/migrator/Dockerfile
+    container_name: online-magaz-migrator
+    environment:
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=OnlineShopDb;Username=postgres;Password=postgres123
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_NAME: OnlineShopDb
+      DB_PASSWORD: postgres123
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: online-magaz-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=OnlineShopDb;Username=postgres;Password=postgres123
+    ports:
+      - "5170:5170"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    container_name: online-magaz-web
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ApiBaseUrl: http://api:5170/
+      ApiPublicUrl: http://localhost:5170/
+    ports:
+      - "7193:7193"
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  postgres_data:

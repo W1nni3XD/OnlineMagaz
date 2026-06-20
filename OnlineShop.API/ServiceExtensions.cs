@@ -1,6 +1,4 @@
-﻿using MailKit;
-
-namespace OnlineShop.API;
+﻿namespace OnlineShop.API;
 
 public static class ServiceExtensions
 {
@@ -8,6 +6,7 @@ public static class ServiceExtensions
     {
         services.AddScoped<TokenService>();
         services.AddScoped<EmailService>();
+        services.AddScoped<ImageService>();
         return services;
     }
 }

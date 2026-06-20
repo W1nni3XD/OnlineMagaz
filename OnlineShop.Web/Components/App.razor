@@ -8,6 +8,7 @@
     <base href="/" />
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    <link href="app.css" rel="stylesheet" />
 </head>
 
 <body>
@@ -16,58 +17,65 @@
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script>
         window.openFileAndUpload = function (inputId, token, apiBase, dotNetRef) {
-            const input = document.getElementById(inputId);
-            if (!input) {
-                dotNetRef.invokeMethodAsync('OnImageUploaded', null);
-                return;
-            }
+        const input = document.getElementById(inputId);
+        if (!input) {
+        console.error('openFileAndUpload: input #' + inputId + ' not found');
+        dotNetRef.invokeMethodAsync('OnImageUploaded', null);
+        return;
+        }
 
-            let settled = false;
-            const finish = (url) => {
-                if (settled) return;
-                settled = true;
-                window.removeEventListener('focus', onWindowFocus);
-                dotNetRef.invokeMethodAsync('OnImageUploaded', url);
-            };
+        let settled = false;
+        const finish = (url) => {
+        if (settled) return;
+        settled = true;
+        window.removeEventListener('focus', onWindowFocus);
+        dotNetRef.invokeMethodAsync('OnImageUploaded', url);
+        };
 
-            const onWindowFocus = () => {
-                setTimeout(() => {
-                    if (!settled && (!input.files || input.files.length === 0))
-                        finish(null);
-                }, 400);
-            };
+        const onWindowFocus = () => {
+        setTimeout(() => {
+        if (!settled && (!input.files || input.files.length === 0))
+        finish(null);
+        }, 400);
+        };
 
-            input.onchange = async function () {
-                if (!input.files || input.files.length === 0) {
-                    finish(null);
-                    return;
-                }
+        const base = (apiBase || '').replace(/\/+$/, '');
+        const uploadUrl = base + '/api/products/upload-image';
 
-                const file = input.files[0];
-                const formData = new FormData();
-                formData.append('file', file);
+        input.onchange = async function () {
+        if (!input.files || input.files.length === 0) {
+        finish(null);
+        return;
+        }
 
-                try {
-                    const response = await fetch(apiBase + 'api/products/upload-image', {
-                        method: 'POST',
-                        headers: { 'Authorization': 'Bearer ' + token },
-                        body: formData
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        finish(data.imageUrl ?? data.ImageUrl ?? null);
-                    } else {
-                        finish(null);
-                    }
-                } catch {
-                    finish(null);
-                }
+        const file = input.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
 
-                input.value = '';
-            };
+        try {
+        const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: formData
+        });
+        if (response.ok) {
+        const data = await response.json();
+        finish(data.imageUrl ?? data.ImageUrl ?? null);
+        } else {
+        const errorText = await response.text().catch(() => 'unknown error');
+        console.error('Upload failed:', response.status, response.statusText, errorText);
+        finish(null);
+        }
+        } catch (err) {
+        console.error('Upload exception:', err);
+        finish(null);
+        }
 
-            window.addEventListener('focus', onWindowFocus);
-            input.click();
+        input.value = '';
+        };
+
+        window.addEventListener('focus', onWindowFocus);
+        input.click();
         };
     </script>
 </body>

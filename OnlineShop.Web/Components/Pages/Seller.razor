@@ -183,7 +183,7 @@ else
             return;
         }
 
-        var apiBase = Configuration["ApiBaseUrl"] ?? "http://localhost:5170/";
+        var apiBase = Configuration["ApiPublicUrl"] ?? "http://localhost:5170/";
         await JSRuntime.InvokeVoidAsync(
             "openFileAndUpload",
             "imageFileInput",

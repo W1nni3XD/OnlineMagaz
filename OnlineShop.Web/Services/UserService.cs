@@ -1,31 +1,15 @@
 namespace OnlineShop.Web.Services;
 
-public class UserService
+public class UserService : BaseApiService
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly AuthService _authService;
-
     public UserService(IHttpClientFactory httpClientFactory, AuthService authService)
-    {
-        _httpClientFactory = httpClientFactory;
-        _authService = authService;
-    }
-
-    private async Task<HttpClient> GetClient()
-    {
-        var client = _httpClientFactory.CreateClient("API");
-        var token = await _authService.GetToken();
-        if (!string.IsNullOrEmpty(token))
-            client.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-        return client;
-    }
+        : base(httpClientFactory, authService) { }
 
     public async Task<UserProfileDto?> GetProfile()
     {
         try
         {
-            var client = await GetClient();
+            var client = await GetClient(true);
             var response = await client.GetAsync("api/user/profile");
             if (!response.IsSuccessStatusCode) return null;
             return await response.Content.ReadFromJsonAsync<UserProfileDto>();
@@ -37,7 +21,7 @@ public class UserService
     {
         try
         {
-            var client = await GetClient();
+            var client = await GetClient(true);
             var response = await client.PutAsJsonAsync("api/user/change-password", dto);
             return response.IsSuccessStatusCode;
         }
@@ -48,7 +32,7 @@ public class UserService
     {
         try
         {
-            var client = await GetClient();
+            var client = await GetClient(true);
             var response = await client.GetAsync("api/user/all");
             if (!response.IsSuccessStatusCode) return new();
             return await response.Content.ReadFromJsonAsync<List<UserAdminDto>>() ?? new();
@@ -60,7 +44,7 @@ public class UserService
     {
         try
         {
-            var client = await GetClient();
+            var client = await GetClient(true);
             var response = await client.PutAsJsonAsync($"api/user/{userId}/role", new ChangeRoleDto { Role = role });
             return response.IsSuccessStatusCode;
         }
